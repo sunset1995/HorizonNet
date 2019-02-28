@@ -6,7 +6,7 @@ from scipy.spatial.distance import cdist
 import torch
 import torch.utils.data as data
 
-import panostretch
+from misc import panostretch
 
 
 class PanoCorBonDataset(data.Dataset):

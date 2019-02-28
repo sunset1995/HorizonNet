@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from model import HorizonNet
 from dataset import PanoCorBonDataset
-from utils import group_weight, adjust_learning_rate, save_model
+from misc.utils import group_weight, adjust_learning_rate, save_model
 
 
 def feed_forward(net, x, y_bon, y_cor):

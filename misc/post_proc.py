@@ -1,8 +1,6 @@
 import numpy as np
 from scipy.ndimage import map_coordinates
 from scipy.spatial.distance import pdist, squareform
-from scipy.spatial import HalfspaceIntersection
-from scipy.spatial import ConvexHull
 from sklearn.decomposition import PCA
 
 
@@ -225,85 +223,6 @@ def init_cuboid(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
     cor = cor[np.argsort(cor[:, 0])]
 
     return cor, xy_cor
-
-
-def tri2halfspace(pa, pb, p):
-    v1 = pa - p
-    v2 = pb - p
-    vn = np.cross(v1, v2)
-    if -vn @ p > 0:
-        vn = -vn
-    return [*vn, -vn @ p]
-
-
-def xyzlst2halfspaces(xyz_floor, xyz_ceil):
-    '''
-    return halfspace enclose (0, 0, 0)
-    '''
-    N = xyz_floor.shape[0]
-    halfspaces = []
-    for i in range(N):
-        last_i = (i - 1 + N) % N
-        next_i = (i + 1) % N
-
-        p_floor_a = xyz_floor[last_i]
-        p_floor_b = xyz_floor[next_i]
-        p_floor = xyz_floor[i]
-        p_ceil_a = xyz_ceil[last_i]
-        p_ceil_b = xyz_ceil[next_i]
-        p_ceil = xyz_ceil[i]
-        halfspaces.append(tri2halfspace(p_floor_a, p_floor_b, p_floor))
-        halfspaces.append(tri2halfspace(p_floor_a, p_ceil, p_floor))
-        halfspaces.append(tri2halfspace(p_ceil, p_floor_b, p_floor))
-        halfspaces.append(tri2halfspace(p_ceil_a, p_ceil_b, p_ceil))
-        halfspaces.append(tri2halfspace(p_ceil_a, p_floor, p_ceil))
-        halfspaces.append(tri2halfspace(p_floor, p_ceil_b, p_ceil))
-    return np.array(halfspaces)
-
-
-def eval_3d(dt_floor_coor, dt_ceil_coor, gt_floor_coor, gt_ceil_coor, ch=-1.6,
-            coorW=1024, coorH=512, floorW=1024, floorH=512):
-    dt_floor_coor = np.array(dt_floor_coor)
-    dt_ceil_coor = np.array(dt_ceil_coor)
-    gt_floor_coor = np.array(gt_floor_coor)
-    gt_ceil_coor = np.array(gt_ceil_coor)
-    assert (dt_floor_coor[:, 0] != dt_ceil_coor[:, 0]).sum() == 0
-    assert (gt_floor_coor[:, 0] != gt_ceil_coor[:, 0]).sum() == 0
-    N = len(dt_floor_coor)
-    dt_floor_xyz = np.hstack([
-        np_coor2xy(dt_floor_coor, ch, coorW, coorH, floorW=1, floorH=1),
-        np.zeros((N, 1)) + ch,
-    ])
-    gt_floor_xyz = np.hstack([
-        np_coor2xy(gt_floor_coor, ch, coorW, coorH, floorW=1, floorH=1),
-        np.zeros((N, 1)) + ch,
-    ])
-    dt_c = np.sqrt((dt_floor_xyz[:, :2] ** 2).sum(1))
-    gt_c = np.sqrt((gt_floor_xyz[:, :2] ** 2).sum(1))
-    dt_v2 = np_coory2v(dt_ceil_coor[:, 1], coorH)
-    gt_v2 = np_coory2v(gt_ceil_coor[:, 1], coorH)
-    dt_ceil_z = dt_c * np.tan(dt_v2)
-    gt_ceil_z = gt_c * np.tan(gt_v2)
-
-    dt_ceil_xyz = dt_floor_xyz.copy()
-    dt_ceil_xyz[:, 2] = dt_ceil_z
-    gt_ceil_xyz = gt_floor_xyz.copy()
-    gt_ceil_xyz[:, 2] = gt_ceil_z
-
-    dt_halfspaces = xyzlst2halfspaces(dt_floor_xyz, dt_ceil_xyz)
-    gt_halfspaces = xyzlst2halfspaces(gt_floor_xyz, gt_ceil_xyz)
-
-    in_halfspaces = HalfspaceIntersection(np.concatenate([dt_halfspaces, gt_halfspaces]),
-                                          np.zeros(3))
-    dt_halfspaces = HalfspaceIntersection(dt_halfspaces, np.zeros(3))
-    gt_halfspaces = HalfspaceIntersection(gt_halfspaces, np.zeros(3))
-
-    in_volume = ConvexHull(in_halfspaces.intersections).volume
-    dt_volume = ConvexHull(dt_halfspaces.intersections).volume
-    gt_volume = ConvexHull(gt_halfspaces.intersections).volume
-    un_volume = dt_volume + gt_volume - in_volume
-
-    return 100 * in_volume / un_volume
 
 
 def infer3rd(x1, y1, x2, y2, coorX, z=50, coorW=1024, coorH=512, floorW=1024, floorH=512):
