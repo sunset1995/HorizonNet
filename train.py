@@ -47,10 +47,10 @@ if __name__ == '__main__':
     # Dataset related arguments
     parser.add_argument('--train_root_dir', default='data/train',
                         help='root directory to training dataset. '
-                             'should contains img, label_bon, label_cor subdirectories')
+                             'should contains img, label_cor subdirectories')
     parser.add_argument('--valid_root_dir', default='data/valid/',
                         help='root directory to validation dataset. '
-                             'should contains img, label_bon, label_cor subdirectories')
+                             'should contains img, label_cor subdirectories')
     parser.add_argument('--no_flip', action='store_true',
                         help='disable left-right flip augmentation')
     parser.add_argument('--no_rotate', action='store_true',

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from collections import OrderedDict
 
 
 def group_weight(module):
@@ -46,8 +47,19 @@ def adjust_learning_rate(optimizer, args):
 
 
 def save_model(net, path, epoch):
-    state_dict = net.state_dict()
-    state_dict['epoch'] = epoch
-    state_dict['backbone'] = net.backbone
-    state_dict['use_rnn'] = net.use_rnn
+    state_dict = OrderedDict({
+        'epoch': epoch,
+        'kwargs': {
+            'backbone': net.backbone,
+            'use_rnn': net.use_rnn,
+        },
+        'state_dict': net.state_dict(),
+    })
     torch.save(state_dict, path)
+
+
+def load_trained_model(Net, path):
+    state_dict = torch.load(path)
+    net = Net(**state_dict['kwargs'])
+    net.load_state_dict(state_dict['state_dict'])
+    return net
