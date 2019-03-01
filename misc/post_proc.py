@@ -79,7 +79,7 @@ def vote(vec, tol):
     l = squareform(pdist(vec[:, None], 'minkowski', p=1) + 1e-9)
 
     invalid = (n < len(vec) * 0.4) | (l > tol)
-    if (~invalid).sum() == 0:
+    if (~invalid).sum() == 0 or len(vec) < 5:
         best_fit = vec.mean()
         p_score = 0
     else:
@@ -96,6 +96,14 @@ def vote(vec, tol):
     l1_score = np.abs(vec - best_fit).mean()
 
     return best_fit, p_score, l1_score
+
+
+def get_z1(coory0, coory1, z0=50, coorH=512):
+    v0 = np_coory2v(coory0, coorH)
+    v1 = np_coory2v(coory1, coorH)
+    c0 = z0 / np.tan(v0)
+    z1 = c0 * np.tan(v1)
+    return z1
 
 
 def np_refine_by_fix_z(coory0, coory1, z0=50, coorH=512):
@@ -131,6 +139,31 @@ def get_gpid(coorx, coorW):
     return gpid
 
 
+def get_gpid_idx(gpid, j):
+    idx = np.where(gpid == j)[0]
+    if idx[0] == 0 and idx[-1] != len(idx) - 1:
+        _shift = -np.where(idx != np.arange(len(idx)))[0][0]
+        idx = np.roll(idx, _shift)
+    return idx
+
+
+def gpid_two_split(xy, tpid_a, tpid_b):
+    m = np.arange(len(xy)) + 1
+    cum_a = np.cumsum(xy[:, tpid_a])
+    cum_b = np.cumsum(xy[::-1, tpid_b])
+    l1_a = cum_a / m - cum_a / (m * m)
+    l1_b = cum_b / m - cum_b / (m * m)
+    l1_b = l1_b[::-1]
+
+    score = l1_a[:-1] + l1_b[1:]
+    best_split = score.argmax() + 1
+
+    va = xy[:best_split, tpid_a].mean()
+    vb = xy[best_split:, tpid_b].mean()
+
+    return va, vb
+
+
 def _get_rot_rad(px, py):
     if px < 0:
         px, py = -px, -py
@@ -142,7 +175,7 @@ def _get_rot_rad(px, py):
     return -rad
 
 
-def get_rot_rad(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, floorH=512):
+def get_rot_rad(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, floorH=512, tol=5):
     gpid = get_gpid(init_coorx, coorW)
     coor = np.hstack([np.arange(coorW)[:, None], coory[:, None]])
     xy = np_coor2xy(coor, z, coorW, coorH, floorW, floorH)
@@ -159,7 +192,7 @@ def get_rot_rad(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
     best_rot_rad_sz = -1
     last_j = 0
     for j in range(1, len(rot_rad_suggestions)):
-        if rot_rad_suggestions[j] - rot_rad_suggestions[j-1] > 5:
+        if rot_rad_suggestions[j] - rot_rad_suggestions[j-1] > tol:
             last_j = j
         elif j - last_j > best_rot_rad_sz:
             rot_rad = rot_rad_suggestions[last_j:j+1].mean()
@@ -223,61 +256,3 @@ def init_cuboid(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
     cor = cor[np.argsort(cor[:, 0])]
 
     return cor, xy_cor
-
-
-def infer3rd(x1, y1, x2, y2, coorX, z=50, coorW=1024, coorH=512, floorW=1024, floorH=512):
-    vx = x1 - x2
-    vy = y1 - y2
-    u = ((coorX + 0.5) / coorW - 0.5) * 2 * PI
-
-    frac_u = z * (np.sin(u) * vx - np.cos(u) * vy)
-    frac_b = -(floorW / 2 - 0.5 - x2) * vx - (floorH / 2 - 0.5 - y2) * vy
-    v = np.arctan(frac_u / frac_b)
-
-    coorY = (-v / PI + 0.5) * coorH - 0.5
-    x, y = np_coor2xy([[coorX, coorY]], z=50, coorW=1024, coorH=512, floorW=1024, floorH=512)[0]
-
-    assert abs((x - x2) * vx + (y - y2) * vy) < 1e-6
-
-    return coorY, x, y
-
-
-def find_other2_type1(x1, y1, x2, y2, scoremap, z=50, coorW=1024, coorH=512):
-    vx = x2 - x1
-    vy = y2 - y1
-    l = np.sqrt(vx ** 2 + vy ** 2)
-    vx = vx / l
-    vy = vy / l
-
-    shiftx1 = x1 - scoremap.shape[1] / 2 + 0.5
-    shifty1 = y1 - scoremap.shape[0] / 2 + 0.5
-    q = -shiftx1 * vx - shifty1 * vy
-    vxc = -(shiftx1 + q * vx)
-    vyc = -(shifty1 + q * vy)
-    ps = np.sqrt(vxc ** 2 + vyc ** 2)
-    p = np.linspace(ps + 1, ps + 1000, 3000)
-
-    dx = vy
-    dy = -vx
-    if vxc * dx + vyc * dy < 0:
-        dx = -dx
-        dy = -dy
-    assert abs(-vxc + ps * dx) < 1e-6 and abs(-vyc + ps * dy) < 1e-6
-    dx = p * dx
-    dy = p * dy
-
-    id1s = [y1 + dy, x1 + dx]
-    id2s = [y2 + dy, x2 + dx]
-    score1 = map_coordinates(scoremap, id1s, order=1)
-    score2 = map_coordinates(scoremap, id2s, order=1)
-    idmax = np.argmax(score1 + score2)
-
-    x3 = x1 + dx[idmax]
-    y3 = y1 + dy[idmax]
-    x4 = x2 + dx[idmax]
-    y4 = y2 + dy[idmax]
-
-    xy = np.array([[x3, y3], [x4, y4]])
-    xy2coor = np_xy2coor(xy)
-
-    return xy, xy2coor
