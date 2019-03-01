@@ -158,7 +158,7 @@ if __name__ == '__main__':
     # Inferencing
     with torch.no_grad():
         for i_path in tqdm(paths, desc='Inferencing'):
-            k = os.path.split(i_path)[-1][:-3]
+            k = os.path.split(i_path)[-1][:-4]
 
             # Load image
             img_pil = Image.open(i_path)
