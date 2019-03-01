@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
+from scipy.ndimage.filters import maximum_filter
 
 import torch
 import torch.nn as nn
@@ -15,12 +16,14 @@ from dataset import visualize_a_data
 from misc import post_proc, panostretch, utils
 
 
-def find_4_peaks(signal):
-    W = signal.shape[0]
-    assert W % 4 == 0
-    signal_part = np.stack(np.split(signal, 4))
-    pk_loc = signal_part.argmax(1)
-    pk_loc += np.arange(4) * (W // 4)
+def find_N_peaks(signal, r=29, min_v=0.05, N=None):
+    max_v = maximum_filter(signal, size=r, mode='wrap')
+    pk_loc = np.where(max_v == signal)[0]
+    pk_loc = pk_loc[signal[pk_loc] > min_v]
+    if N is not None:
+        order = np.argsort(-signal[pk_loc])
+        pk_loc = pk_loc[order[:N]]
+        pk_loc = pk_loc[np.argsort(pk_loc)]
     return pk_loc, signal[pk_loc]
 
 
@@ -85,7 +88,7 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False):
     y_cor_ = y_cor_[0, 0]
 
     # Detech wall-wall peaks (cuboid version)
-    xs_ = find_4_peaks(y_cor_)[0]
+    xs_ = find_N_peaks(y_cor_, r=29, min_v=0, N=4)[0]
 
     # Init floor/ceil plane
     z0 = 50

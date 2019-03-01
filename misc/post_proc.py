@@ -206,8 +206,10 @@ def init_cuboid(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
     gpid = get_gpid(init_coorx, coorW)
     coor = np.hstack([np.arange(coorW)[:, None], coory[:, None]])
     xy = np_coor2xy(coor, z, coorW, coorH, floorW, floorH)
+
+    # For each part seperated by wall-wall peak, voting for a wall
     xy_cor = []
-    for j in range(len(init_coorx)):
+    for j in range(4):
         now_x = xy[gpid == j, 0]
         now_y = xy[gpid == j, 1]
         new_x, x_score, x_l1 = vote(now_x, tol)
@@ -217,34 +219,25 @@ def init_cuboid(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
         else:
             xy_cor.append({'type': 1, 'val': new_y, 'score': y_score})
 
-    # Permute score 0
-    new_xy_cor = []
-    for j in range(len(xy_cor)):
-        if xy_cor[j]['score'] > 0:
-            new_xy_cor.append(xy_cor[j])
-            continue
-
-        last_j = (j - 1 + len(xy_cor)) % len(xy_cor)
-        next_j = (j + 1) % len(xy_cor)
-        if xy_cor[last_j]['type'] == xy_cor[next_j]['type']:
-            xy_cor[j]['type'] = (xy_cor[last_j]['type'] + 1) % 2
-            xy_cor[j]['val'] = xy[gpid == j, xy_cor[j]['type']].mean()
-            new_xy_cor.append(xy_cor[j])
+    # Sanity fallback
+    scores = [0, 0]
+    for j in range(4):
+        if xy_cor[j]['type'] == 0:
+            scores[j % 2] += xy_cor[j]['score']
         else:
-            lu = np_coorx2u(np.argwhere(gpid == last_j).max())
-            ru = np_coorx2u(np.argwhere(gpid == next_j).min())
-            if xy_cor[last_j]['type'] == 0:
-                nx = np_y_u_solve_x(xy_cor[next_j]['val'], ru, floorW=1024, floorH=512)
-                ny = np_x_u_solve_y(xy_cor[last_j]['val'], lu, floorW=1024, floorH=512)
-                new_xy_cor.append({'type': 1, 'val': ny, 'score': 0})
-                new_xy_cor.append({'type': 0, 'val': nx, 'score': 0})
-            else:
-                nx = np_y_u_solve_x(xy_cor[last_j]['val'], lu, floorW=1024, floorH=512)
-                ny = np_x_u_solve_y(xy_cor[next_j]['val'], ru, floorW=1024, floorH=512)
-                new_xy_cor.append({'type': 0, 'val': nx, 'score': 0})
-                new_xy_cor.append({'type': 1, 'val': ny, 'score': 0})
-    xy_cor = new_xy_cor
+            scores[j % 2] -= xy_cor[j]['score']
+    if scores[0] > scores[1]:
+        xy_cor[0]['type'] = 0
+        xy_cor[1]['type'] = 1
+        xy_cor[2]['type'] = 0
+        xy_cor[3]['type'] = 1
+    else:
+        xy_cor[0]['type'] = 1
+        xy_cor[1]['type'] = 0
+        xy_cor[2]['type'] = 1
+        xy_cor[3]['type'] = 0
 
+    # Ceiling view to normal view
     cor = []
     for j in range(len(xy_cor)):
         next_j = (j + 1) % len(xy_cor)
