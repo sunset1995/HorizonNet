@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from model import HorizonNet
+from dataset import visualize_a_data
 from misc import post_proc, panostretch, utils
 
 
@@ -56,7 +57,7 @@ def augment_undo(x_imgs_augmented, aug_type):
     return np.array(x_imgs)
 
 
-def inference(net, x, device, flip=False, rotate=[]):
+def inference(net, x, device, flip=False, rotate=[], visualize=False):
     '''
     net   : the trained HorizonNet
     x     : tensor in shape [1, 3, 512, 1024]
@@ -70,10 +71,17 @@ def inference(net, x, device, flip=False, rotate=[]):
     x, aug_type = augment(x, args.flip, args.rotate)
     y_bon_, y_cor_ = net(x.to(device))
     y_bon_ = augment_undo(y_bon_.cpu(), aug_type).mean(0)
-    y_bon_ = (y_bon_ / np.pi + 0.5) * H - 0.5
     y_cor_ = augment_undo(torch.sigmoid(y_cor_).cpu(), aug_type).mean(0)
 
-    y_bon_ = y_bon_[0]
+    # Visualize raw model output
+    if visualize:
+        vis_out = visualize_a_data(x[0],
+                                   torch.FloatTensor(y_bon_[0]),
+                                   torch.FloatTensor(y_cor_[0]))
+    else:
+        vis_out = None
+
+    y_bon_ = (y_bon_[0] / np.pi + 0.5) * H - 0.5
     y_cor_ = y_cor_[0, 0]
 
     # Detech wall-wall peaks (cuboid version)
@@ -88,6 +96,7 @@ def inference(net, x, device, flip=False, rotate=[]):
 
     # Expand with btn coory
     cor = np.hstack([cor, post_proc.infer_coory(cor[:, 1], z1 - z0, z0)[:, None]])
+    assert len(cor) == 4, 'Extracted corner not cuboid !?'
 
     # Collect corner position in equirectangular
     cor_id = np.zeros((8, 2), np.float32)
@@ -99,7 +108,7 @@ def inference(net, x, device, flip=False, rotate=[]):
     cor_id[:, 0] /= W
     cor_id[:, 1] /= H
 
-    return cor_id, z0, z1
+    return cor_id, z0, z1, vis_out
 
 
 if __name__ == '__main__':
@@ -112,6 +121,7 @@ if __name__ == '__main__':
                              'All the given images are assumed to be aligned'
                              'or you should use preporcess.py to do so.')
     parser.add_argument('--output_dir', required=True)
+    parser.add_argument('--visualize', action='store_true')
     # Augmentation related
     parser.add_argument('--flip', action='store_true',
                         help='whether to perfome left-right flip. '
@@ -134,7 +144,7 @@ if __name__ == '__main__':
 
     # Check target directory
     if not os.path.isdir(args.output_dir):
-        print('Output directory %s not existed. Create one.')
+        print('Output directory %s not existed. Create one.' % args.output_dir)
         os.makedirs(args.output_dir)
     device = torch.device('cpu' if args.no_cuda else 'cuda')
 
@@ -145,7 +155,7 @@ if __name__ == '__main__':
     # Inferencing
     with torch.no_grad():
         for i_path in tqdm(paths, desc='Inferencing'):
-            k = os.path.split(i_path)[-1]
+            k = os.path.split(i_path)[-1][:-3]
 
             # Load image
             img_pil = Image.open(i_path)
@@ -155,7 +165,9 @@ if __name__ == '__main__':
             x = torch.FloatTensor([img_ori / 255])
 
             # Inferenceing corners
-            cor_id, z0, z1 = inference(net, x, device, args.flip, args.rotate)
+            cor_id, z0, z1, vis_out = inference(net, x, device,
+                                                args.flip, args.rotate,
+                                                args.visualize)
 
             # Output result
             with open(os.path.join(args.output_dir, k + '.json'), 'w') as f:
@@ -164,3 +176,7 @@ if __name__ == '__main__':
                     'z1': float(z1),
                     'uv': [[float(u), float(v)] for u, v in cor_id],
                 }, f)
+
+            if vis_out is not None:
+                vis_path = os.path.join(args.output_dir, k + '.raw.png')
+                Image.fromarray(vis_out).save(vis_path)

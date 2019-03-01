@@ -141,7 +141,7 @@ def test(dt_cor_id, z0, z1, gt_cor_id, w, h, losses):
 def prepare_gtdt_pairs(gt_glob, dt_glob):
     gt_paths = sorted(glob.glob(gt_glob))
     dt_paths = dict([(os.path.split(v)[-1].split('.')[0], v)
-                     for v in glob.glob(dt_glob)])
+                     for v in glob.glob(dt_glob) if v.endswith('json')])
 
     gtdt_pairs = []
     for gt_path in gt_paths:
