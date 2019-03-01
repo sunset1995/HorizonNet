@@ -186,7 +186,7 @@ if __name__ == '__main__':
 
         for k, v in valid_loss.items():
             k = 'valid/%s' % k
-            tb_writer.add_scalar(k, v, ith_epoch)
+            tb_writer.add_scalar(k, v / valid_num, ith_epoch)
 
         # Periodically save model
         if ith_epoch % args.save_every == 0:
