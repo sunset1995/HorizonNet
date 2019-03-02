@@ -92,32 +92,39 @@ def eval_3diou(dt_floor_coor, dt_ceil_coor, gt_floor_coor, gt_ceil_coor, ch=-1.6
     return 100 * in_volume / un_volume
 
 
+def gen_reg_from_xy(xy, w):
+    xy = xy[np.argsort(xy[:, 0])]
+    return np.interp(np.arange(w), xy[:, 0], xy[:, 1], period=w)
+
+
 def test(dt_cor_id, z0, z1, gt_cor_id, w, h, losses):
     # Eval corner error
     mse = np.sqrt(((gt_cor_id - dt_cor_id)**2).sum(1)).mean()
     ce_loss = 100 * mse / np.sqrt(w**2 + h**2)
 
     # Pixel surface error (3 labels: ceiling, wall, floor)
-    y0_dt = np.zeros(w)
-    y0_gt = np.zeros(w)
-    y1_gt = np.zeros(w)
+    y0_dt = []
+    y0_gt = []
+    y1_gt = []
     for j in range(4):
         coorxy = panostretch.pano_connect_points(dt_cor_id[j * 2],
                                                  dt_cor_id[(j * 2 + 2) % 8],
                                                  -z0)
-        y0_dt[np.round(coorxy[:, 0]).astype(int)] = coorxy[:, 1]
+        y0_dt.append(coorxy)
 
         coorxy = panostretch.pano_connect_points(gt_cor_id[j * 2],
                                                  gt_cor_id[(j * 2 + 2) % 8],
                                                  -z0)
-        y0_gt[np.round(coorxy[:, 0]).astype(int)] = coorxy[:, 1]
+        y0_gt.append(coorxy)
 
         coorxy = panostretch.pano_connect_points(gt_cor_id[j * 2 + 1],
                                                  gt_cor_id[(j * 2 + 3) % 8],
                                                  z0)
-        y1_gt[np.round(coorxy[:, 0]).astype(int)] = coorxy[:, 1]
-    assert (y0_dt == 0).sum() == 0
+        y1_gt.append(coorxy)
+    y0_dt = gen_reg_from_xy(np.concatenate(y0_dt, 0), w)
     y1_dt = post_proc.infer_coory(y0_dt, z1 - z0, z0)
+    y0_gt = gen_reg_from_xy(np.concatenate(y0_gt, 0), w)
+    y1_gt = gen_reg_from_xy(np.concatenate(y1_gt, 0), w)
 
     surface = np.zeros((h, w), dtype=np.int32)
     surface[np.round(y0_dt).astype(int), np.arange(w)] = 1
