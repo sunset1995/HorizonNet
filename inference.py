@@ -94,8 +94,8 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False):
     z0 = 50
     _, z1 = post_proc.np_refine_by_fix_z(*y_bon_, z0)
 
-    # Init manhattan aligned cuboid
-    cor, _ = post_proc.init_cuboid(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6))
+    # Generate cuboid wall-wall
+    cor, _ = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=True)
 
     # Expand with btn coory
     cor = np.hstack([cor, post_proc.infer_coory(cor[:, 1], z1 - z0, z0)[:, None]])

@@ -202,13 +202,10 @@ def get_rot_rad(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
     return dx, rot_rad
 
 
-def init_cuboid(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, floorH=512, tol=3):
-    gpid = get_gpid(init_coorx, coorW)
-    coor = np.hstack([np.arange(coorW)[:, None], coory[:, None]])
-    xy = np_coor2xy(coor, z, coorW, coorH, floorW, floorH)
+def gen_ww_cuboid(xy, gpid, tol):
+    xy_cor = []
 
     # For each part seperated by wall-wall peak, voting for a wall
-    xy_cor = []
     for j in range(4):
         now_x = xy[gpid == j, 0]
         now_y = xy[gpid == j, 1]
@@ -237,6 +234,18 @@ def init_cuboid(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
         xy_cor[2]['type'] = 1
         xy_cor[3]['type'] = 0
 
+    return xy_cor
+
+
+def gen_ww(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, floorH=512, tol=3, force_cuboid=True):
+    gpid = get_gpid(init_coorx, coorW)
+    coor = np.hstack([np.arange(coorW)[:, None], coory[:, None]])
+    xy = np_coor2xy(coor, z, coorW, coorH, floorW, floorH)
+
+    # Generate wall-wall
+    if force_cuboid:
+        xy_cor = gen_ww_cuboid(xy, gpid, tol)
+
     # Ceiling view to normal view
     cor = []
     for j in range(len(xy_cor)):
@@ -246,6 +255,6 @@ def init_cuboid(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
         else:
             cor.append((xy_cor[j]['val'], xy_cor[next_j]['val']))
     cor = np_xy2coor(np.array(cor), z, coorW, coorH, floorW, floorH)
-    cor = cor[np.argsort(cor[:, 0])]
+    cor = np.roll(cor, -2 * cor[::2, 0].argmin(), axis=0)
 
     return cor, xy_cor
