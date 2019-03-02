@@ -79,8 +79,8 @@ def vote(vec, tol):
     l = squareform(pdist(vec[:, None], 'minkowski', p=1) + 1e-9)
 
     invalid = (n < len(vec) * 0.4) | (l > tol)
-    if (~invalid).sum() == 0 or len(vec) < 5:
-        best_fit = vec.mean()
+    if (~invalid).sum() == 0 or len(vec) < tol:
+        best_fit = np.median(vec)
         p_score = 0
     else:
         l[invalid] = 1e5
