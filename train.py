@@ -82,6 +82,8 @@ if __name__ == '__main__':
                         help='momentum for sgd, beta1 for adam')
     parser.add_argument('--weight_decay', default=0, type=float,
                         help='factor for L2 regularization')
+    parser.add_argument('--freeze_bn', action='store_true',
+                        help='whether to freeze statistic of batchnorm')
     # Misc arguments
     parser.add_argument('--no_cuda', action='store_true',
                         help='disable cuda')
@@ -147,7 +149,8 @@ if __name__ == '__main__':
 
         # Train phase
         net.train()
-        net.freeze_bn()
+        if args.freeze_bn:
+            net.freeze_bn()
         iterator_train = iter(loader_train)
         for _ in trange(len(loader_train),
                         desc='Train ep%s' % ith_epoch, position=1):
