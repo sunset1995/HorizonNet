@@ -84,7 +84,7 @@ def warp_floor_ceiling(xy, z_floor, z_ceiling, H, W, ppm, alpha, n_thread):
     ], -1).reshape(-1, 4)
     ceil_xyz = np.stack([xs, ys, zs_ceil], axis=-1).reshape(-1, 3)
 
-    if len(floor_xy) != 4 or True:
+    if len(floor_xy) != 4:
         xy_poly = Polygon(xy)
         with Pool(n_thread) as p:
             sel = list(tqdm(
@@ -103,13 +103,13 @@ if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--img', default='assert/output_preprocess/demo_aligned_rgb.png',
+    parser.add_argument('--img', required=True,
                         help='Image texture in equirectangular format')
-    parser.add_argument('--layout', default='assert/output/demo_aligned_rgb_cor_id.txt',
+    parser.add_argument('--layout', required=True,
                         help='Txt file containing layout corners (cor_id)')
     parser.add_argument('--camera_height', default=1.6, type=float,
                         help='Camera height in meter (not the viewer camera)')
-    parser.add_argument('--ppm', default=120, type=int,
+    parser.add_argument('--ppm', default=80, type=int,
                         help='Points per meter')
     parser.add_argument('--point_size', default=0.0025, type=int,
                         help='Point size')
