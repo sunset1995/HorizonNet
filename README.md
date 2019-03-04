@@ -9,7 +9,7 @@ Overview of the pipeline:
 Use this repo, you can:
 - [WIP] Extract layout of your own 360 images with our trained **HorizonNet**
 - Layout 3D viewer
-- Train on your own dataset (not limit to cuboid)
+- [WIP] Train on your own dataset (not limit to cuboid)
 - Copy the proposed **Pano Stretch Augmentation** to use on your own task
 - Quantitative evaluatation (3D IoU, Corner Error, Pixel Error)
 
@@ -32,7 +32,7 @@ Use this repo, you can:
 
 ### 1. Preparation
 - Get your fasinated 360 room images. I will use `assets/demo.png` for example.
-    - ![](assets/demo.png)
+    - ![](assets/demo.png) (modified from PanoContext dataset)
 - Prepare the enviroment to run the python scripts.
 - Download the trained model from *[TO BE RELEASED]*
 
