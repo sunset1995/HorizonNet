@@ -243,18 +243,29 @@ class HorizonNet(nn.Module):
         ])
         self.step_cols = 4
         self.rnn_hidden_size = 512
-        self.bi_rnn = nn.LSTM(input_size=_exp * 256,
-                              hidden_size=self.rnn_hidden_size,
-                              num_layers=2,
-                              dropout=0.5,
-                              batch_first=False,
-                              bidirectional=True)
-        self.drop_out = nn.Dropout(0.5)
-        self.linear = nn.Linear(in_features=2 * self.rnn_hidden_size,
-                                out_features=3 * self.step_cols)
-        self.linear.bias.data[0].fill_(-1)
-        self.linear.bias.data[1].fill_(-0.478)
-        self.linear.bias.data[2].fill_(0.425)
+        if self.use_rnn:
+            self.bi_rnn = nn.LSTM(input_size=_exp * 256,
+                                  hidden_size=self.rnn_hidden_size,
+                                  num_layers=2,
+                                  dropout=0.5,
+                                  batch_first=False,
+                                  bidirectional=True)
+            self.drop_out = nn.Dropout(0.5)
+            self.linear = nn.Linear(in_features=2 * self.rnn_hidden_size,
+                                    out_features=3 * self.step_cols)
+            self.linear.bias.data[0::4].fill_(-1)
+            self.linear.bias.data[4::8].fill_(-0.478)
+            self.linear.bias.data[8::12].fill_(0.425)
+        else:
+            self.linear = nn.Sequential(
+                nn.Linear(_exp * 256, self.rnn_hidden_size),
+                nn.ReLU(inplace=True),
+                nn.Dropout(0.5),
+                nn.Linear(self.rnn_hidden_size, 3 * self.step_cols),
+            )
+            self.linear[-1].bias.data[0::4].fill_(-1)
+            self.linear[-1].bias.data[4::8].fill_(-0.478)
+            self.linear[-1].bias.data[8::12].fill_(0.425)
         self.x_mean.requires_grad = False
         self.x_std.requires_grad = False
 
@@ -279,16 +290,25 @@ class HorizonNet(nn.Module):
             tmp = f(x, block_w)  # [b, c, h, w]
             flat = tmp.view(tmp.shape[0], -1, tmp.shape[3])  # [b, c*h, w]
             down_list.append(flat)
-        feature = torch.cat(down_list, dim=1)
-        feature = feature.permute(2, 0, 1)  # [w, b, c*h]
+        feature = torch.cat(down_list, dim=1)  # [b, c*h, w]
 
         # rnn
-        output, hidden = self.bi_rnn(feature)  # [seq_len, batch, num_directions * hidden_size]
-        output = self.drop_out(output)
-        output = self.linear(output)  # [seq_len, batch, 3 * step_cols]
-        output = output.view(output.shape[0], output.shape[1], 3, self.step_cols)  # [seq_len, batch, 3, step_cols]
-        output = output.permute(1, 2, 0, 3)  # [batch, 3, seq_len, step_cols]
-        output = output.contiguous().view(output.shape[0], 3, -1)  # [batch, 3, seq_len*step_cols]
+        if self.use_rnn:
+            feature = feature.permute(2, 0, 1)  # [w, b, c*h]
+            output, hidden = self.bi_rnn(feature)  # [seq_len, b, num_directions * hidden_size]
+            output = self.drop_out(output)
+            output = self.linear(output)  # [seq_len, b, 3 * step_cols]
+            output = output.view(output.shape[0], output.shape[1], 3, self.step_cols)  # [seq_len, b, 3, step_cols]
+            output = output.permute(1, 2, 0, 3)  # [b, 3, seq_len, step_cols]
+            output = output.contiguous().view(output.shape[0], 3, -1)  # [b, 3, seq_len*step_cols]
+        else:
+            feature = feature.permute(0, 2, 1)  # [b, w, c*h]
+            output = self.linear(feature)  # [b, w, 3 * step_cols]
+            output = output.view(output.shape[0], output.shape[1], 3, self.step_cols)  # [b, w, 3, step_cols]
+            output = output.permute(0, 2, 1, 3)  # [b, 3, w, step_cols]
+            output = output.contiguous().view(output.shape[0], 3, -1)  # [b, 3, w*step_cols]
+
         cor = output[:, :1]
         bon = output[:, 1:]
+
         return bon, cor
