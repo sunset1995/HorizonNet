@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Cheng Sun</title>
+    <title>HorizonNet</title>
     <meta name="keywords" content="Cheng Sun, 孫誠, Sunset">
     <meta name="description" content="My research interests encompass Deep Learning, Natural Language Processing, Reinforcement Learning. I's also intersted in the topic about reducing deep model's size during or after training while preserving the accuracy.">
     <meta property="og:title" content="Cheng Sun">
@@ -21,72 +21,88 @@
 </head>
 <body>
     
-    <div id="top">
-        <div role="my-head-container">
-            <div role="my-head"></div>
-        </div>
-        <h1>Cheng Sun</h1>
-        <section role="personal-link">
-            <div>
-                <a href="mailto:s2821d3721@gmail.com"><i class="fa fa-envelope"></i> s2821d3721@gmail.com</a>
-            </div>
-            <hr>
-            <div>
-                <a href="https://github.com/sunset1995" target="_blank"><i class="fa fa-github fa-lg"></i></a>
-                <a href="https://www.facebook.com/set.sun.9235" target="_blank"><i class="fa fa-facebook fa-lg"></i></a>
-                <a href="https://www.linkedin.com/in/cheng-sun-5506b7117/" target="_blank"><i class="fa fa-linkedin fa-lg"></i></a>
-            </div>
+    <div id="teaser">
+        <h1>HorizonNet</h1>
+        <h2>Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation</h2>
+
+        <section role="authors">
+            <header>
+                <a href="https://sunset1995.github.io/">Cheng Sun</a>
+                <a href="https://chiweihsiao.github.io/">Chi-Wei Hsiao</a>
+                <a href="http://aliensunmin.github.io/">Min Sun</a>
+                <a href="https://htchen.github.io/">Hwann-Tzong Chen</a>
+            </header>
+            <div>National Tsing Hua University</div>
+        </section>
+
+        <section role="affiliation">
+            <div><a href="http://cvpr2019.thecvf.com/">IEEE Conference on Computer Vision and Pattern Recognition 2019 (CVPR 2019)</a></div>
         </section>
     </div>
     
     <main>
-        <h2>About me</h2>
-        <p>I'm expected to enroll in the Information Systems and Applications at National Tsing Hua University and I will be supervised by <a href="http://aliensunmin.github.io/" target="_blank">Prof. Min Sun</a> in <a href="http://aliensunmin.github.io/lab/info.html" target="_blank">Vision Science Lab</a>.</p>
-        <p>My research interests encompass Deep Learning, Natural Language Processing, Reinforcement Learning. I'm also interested in the topic about reducing deep model's size during or after training while preserving the accuracy.</p>
-        
-        <h2>Education</h2>
-        <article>
-            <header>M.S Degree in Information Systems and Applications at <a href="http://nthu-en.web.nthu.edu.tw/" target="_blank">National Tsing Hua University</a></header>
-            <p role="sub-title">
-                <i class="fa fa-calendar"></i>
-                Expected 2018 Sep
-            </p>
-        </article>
-        <article>
-            <header>B.S Degree in Computer Science at <a href="http://www.nctu.edu.tw/en" target="_blank">National Chiao Tung University</a></header>
-            <p role="sub-title">
-                <i class="fa fa-calendar"></i>
-                2014 Sep - Expected 2018 Feb
-            </p>
-        </article>
 
-        <h2>Experience</h2>
-        <article>
-            <header>MOST Formosa Speech Grand Challenge Warm-up Contest, 1st place</header>
-            <p role="sub-title">
-                <i class="fa fa-users"></i>
-                <a href="https://chiweihsiao.github.io/" target="_blank">Chi-Wei, Hsiao</a>, <b>Cheng Sun</b>, <a href="https://github.com/ko19951231" target="_blank">Chu-Ling, Ko</a>
-            </p>
-            <p>Retrive the most reasonable sentence in 6 options given previous conversations.</p>
-        </article>
-        <article>
-            <header>SINICA Summer Internship</header>
-            <p role="sub-title">
-                <i class="fa fa-calendar"></i>
-                2017 July - 2017 August
-            </p>
-            <p>Apply convolutional autoencoder to Airbox data in order to detect anomaly and irregular events.</p>
-        </article>
-        <article>
-            <header>Open Source Conference Frontend Engineer Volunteer</header>
-            <p role="sub-title">
-                    <i class="fa fa-calendar"></i>
-                    2015 July - 2016 August
-            </p>
-            <p>Develop conference website for <a href="http://sitcon.org/2016/#target-home" target="_blank">SITCON 2016</a>, <a href="http://coscup.org/2016/" target="_blank">COSCUP 2016</a>.</p>
-        </article>
+        <h3>Abstract</h3>
+        <section role='teaser-img'>
+            <img src="imgs/overview.png" >
+        </section>
+        <p>We present a new approach to the problem of estimating 3D room layout from a single panoramic image. We represent room layout as three 1D vectors that encode, at each image column, the boundary positions of floor-wall and ceiling-wall, and the existence of wall-wall boundary. The proposed network architecture, HorizonNet, trained for predicting 1D layout, outperforms previous state-of-the-art approaches. The designed post-processing procedure for recovering 3D room layouts from 1D predictions can automatically infer the room shape with low computation cost---it takes less than 20ms for a panorama image while prior works might need dozens of seconds. We also propose Pano Stretch Data Augmentation, which can diversify panorama data and be applied to other panorama-related learning tasks. Due to the limited training data available for non-cuboid layout, we re-annotate 65 general layout data from the current dataset for fine-tuning and qualitatively show the ability of our approach to estimate general layouts.</p>
         
-        <footer>&copy; 2018 Cheng Sun. Hosted on <a href="https://pages.github.com/" target="_blank">github page</a>.</footer>
+        <h3>Links</h3>
+        <p><a href="https://arxiv.org/abs/1901.03861">
+            <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
+            [Paper]
+        </a></p>
+        
+        <p><a href="https://github.com/sunset1995/HorizonNet">
+            <i class="fa fa-github" aria-hidden="true"></i>
+            [Codes]
+        </a></p>
+
+        <p><a href="#">
+            <i class="fa fa-database" aria-hidden="true"></i>
+            [Few Annotated Non-cuboid Layout]
+        </a></p>
+
+
+        <h3>Demo Results</h3>
+        <p>Below video show the effect of the proposed Pano Stretch Augmentation and some non-cuboid reconstructed results.</p>
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/sSAtY1W_asE" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+        <section role="gallery">
+            <p>In below figures, green lines are original annotated ground truth while the blue ones are estimated by our approach.</p>
+            <table>
+                <tr>
+                    <td><img src="imgs/demo_a.jpg"></td>
+                    <td><img src="imgs/demo_b.jpg"></td>
+                </tr>
+                <tr>
+                    <td><img src="imgs/demo_c.jpg"></td>
+                    <td><img src="imgs/demo_d.jpg"></td>
+                </tr>
+                <tr>
+                    <td><img src="imgs/demo_e.jpg"></td>
+                    <td><img src="imgs/demo_f.jpg"></td>
+                </tr>
+                <tr>
+                    <td><img src="imgs/demo_g.jpg"></td>
+                    <td><img src="imgs/demo_h.jpg"></td>
+                </tr>
+                <tr>
+                    <td><img src="imgs/demo_i.jpg"></td>
+                    <td><img src="imgs/demo_j.jpg"></td>
+                </tr>
+            </table>
+        </section>
+
+        <h3>BibTeX</h3>
+        <p>If you use our code or data, please cite:</p>
+<pre>@article{sun2019horizonnet,
+  title={HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation},
+  author={Sun, Cheng and Hsiao, Chi-Wei and Sun, Min and Chen, Hwann-Tzong},
+  journal={arXiv preprint arXiv:1901.03861},
+  year={2019}
+}</pre>
     </main>
     
 </body>

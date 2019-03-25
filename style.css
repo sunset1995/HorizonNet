@@ -10,52 +10,90 @@ html, body {
     color: #333;
 }
 
-#top {
+#teaser {
     background-color: #333;
     color: #eee;
     padding: 4em;
     box-shadow: 0 0 500px #111 inset;
 }
 
+section[role=teaser-img] {
+    display: block;
+    width: 100%;
+    margin: 1em auto;
+    background: transparent;
+}
+
+section[role=teaser-img] > img {
+    display: block;
+    width: 100%;
+}
+
 h1 {
     font-family: 'Roboto Condensed', sans-serif;
-    font-size: 4.5em;
+    font-size: 3em;
     font-weight: 900;
+    text-align: center;
+    margin: 0;
+    /*margin-bottom: 0.4em;*/
+}
+
+h2 {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 2em;
     text-align: center;
     margin: 0;
     margin-bottom: 0.4em;
 }
 
-h2 {
+h3 {
     font-family: 'Roboto Condensed', sans-serif;
-    font-size: 36px;
-    font-weight: 900;
+    font-size: 2em;
+    text-align: center;
+    margin: 0;
     margin-top: 2em;
-    margin-bottom: .1em;
+    margin-bottom: 0.4em;
 }
 
 main {
     display: block;
     position: relative;
     width: 90%;
-    max-width: 710px;
+    max-width: 756px;
     margin: 0 auto;
 }
 
 p {
-    font-size: 20px;
+    font-size: 1.2em;
     line-height: 1.4em;
     text-align: justify;
     margin: 0;
-    font-weight: 200;
 }
 
-a {
+a { 
+    display: inline-block;
+    color: #94ceff;
+    text-decoration: none;
+    margin: 0 .7em;
+    vertical-align: baseline;
     opacity: .77;
-    color: #0076df;
 }
 a:hover {
     opacity: 1;
+    text-decoration: underline;
+}
+
+main a {
+    color: #3173ab;
+}
+
+pre {
+    font-family: monospace;
+}
+
+iframe {
+    display: block;
+    margin: 1em auto 2em auto;
 }
 
 footer {
@@ -67,22 +105,32 @@ footer {
     border-top: 1px solid #aaa;
 }
 
-section[role=personal-link] {
+section[role=gallery] table {
+    display: block;
+    width: 100%;
+    margin: 0 auto;
+    background: white;
+}
+
+section[role=gallery] td {
+    width: 50%;
+}
+
+section[role=gallery] img {
+    width: 100%;
+}
+
+section[role=authors] {
     display: block;
     text-align: center;
+    background: transparent;
 }
-section[role=personal-link] hr {
-    width: 10em;
-    margin: .7em auto;
-    border-top: 1px solid #eee;
-    border-bottom: 0;
-}
-section[role=personal-link] a {
-    display: inline-block;
-    color: #eee;
-    text-decoration: none;
-    margin: 0 .7em;
-    vertical-align: baseline;
+
+section[role=affiliation] {
+    display: block;
+    text-align: center;
+    padding: 2em;
+    background: transparent;
 }
 
 div[role="my-head-container"] {
