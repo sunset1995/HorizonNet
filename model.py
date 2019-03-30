@@ -191,15 +191,19 @@ class GlobalHeightConv(nn.Module):
         self.layer = nn.Sequential(
             LR_PAD(),
             nn.Conv2d(in_c, in_c//2, kernel_size=3, stride=(2, 1), padding=(1, 0)),
+            nn.BatchNorm2d(in_c//2),
             nn.ReLU(inplace=True),
             LR_PAD(),
             nn.Conv2d(in_c//2, in_c//2, kernel_size=3, stride=(2, 1), padding=(1, 0)),
+            nn.BatchNorm2d(in_c//2),
             nn.ReLU(inplace=True),
             LR_PAD(),
             nn.Conv2d(in_c//2, in_c//4, kernel_size=3, stride=(2, 1), padding=(1, 0)),
+            nn.BatchNorm2d(in_c//4),
             nn.ReLU(inplace=True),
             LR_PAD(),
             nn.Conv2d(in_c//4, out_c, kernel_size=3, stride=(2, 1), padding=(1, 0)),
+            nn.BatchNorm2d(out_c),
             nn.ReLU(inplace=True),
         )
 
