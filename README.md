@@ -1,20 +1,24 @@
 # HorizonNet
 
-**[This project is under construction. Will be updated recently.]**
-
 This is the implementation of our CVPR'19 [
-HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)
+HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation.](https://arxiv.org/abs/1901.03861) ([project page](https://sunset1995.github.io/HorizonNet/))
 
 Overview of the pipeline:
-![](assets/pipeline.png)
+![](assets/pipeline.jpg)
 
-Use this repo, you can:
-- [WIP] Extract layout of your own 360 images with our trained **HorizonNet**
-- Layout 3D viewer
-- [WIP] Train on your own dataset (not limit to cuboid)
-- Copy the proposed **Pano Stretch Augmentation** to use on your own task
-- Quantitative evaluatation (3D IoU, Corner Error, Pixel Error)
+This repo is a **pure python** implementation that you can:
+- [x] **Inference on your images** to get cuboid or general shaped room layout
+- [x] **3D layout viewer**
+- [x] **Correct pose** for your panorama images
+- [x] **Pano Stretch Augmentation** copy and paste to apply on your own task
+- [x] **Quantitative evaluatation** (3D IoU, Corner Error, Pixel Error)
+    - [x] cuboid shape
+    - [ ] general shape
+- [ ] Faster pre-processing script (pose correction) (maybe [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
+- [ ] Training/preparation script for customized dataset
+- [ ] Update bibtex to CVPR IEEE version
 
+Please [cite us](#citation) if you use this work.
 
 ## Requirements
 - Python 3
@@ -27,79 +31,136 @@ Use this repo, you can:
 - tensorboardX
 - opencv-python>=3.1 (for pre-processing)
 - open3d (for layout 3D viewer)
-- shapely (for layout 3D viewer)
 
 
-## How to Run
+## Download
+- [Dataset](https://drive.google.com/open?id=1e-MuWRx3T4LJ8Bu4Dc0tKcSHF9Lk_66C) for training/validation/testing
+    - Put all of them under `data` directory so you should get:
+        ```
+        HorizonNet/
+        |--data/
+        |  |--finetune_general/
+        |  |--test/
+        |  |--train/
+        |  |--valid/
+        ```
+    - `test`, `train`, `valid` are processed from [LayoutNet's cuboid dataset](https://github.com/zouchuhang/LayoutNet).
+    - `finetune_general` is re-annotated by us from `train` and `valid`. It contains  65 general shaped rooms.
+- [Cuboid room pretrained model](https://drive.google.com/open?id=1N3y2AVrd8GATVdz7VPjS8r24bDSmpbb7)
+    - Trained on `train/` 817 pano images
+- [General room pretrained model](https://drive.google.com/open?id=1N3y2AVrd8GATVdz7VPjS8r24bDSmpbb7)
+    - Trained on `train/` 817 pano images first
+    - Finetuned on `finetune_general/` 66 images
 
-### 1. Preparation
-- Get your fasinated 360 room images. I will use `assets/demo.png` for example.
-    - ![](assets/demo.png) (modified from PanoContext dataset)
-- Prepare the enviroment to run the python scripts.
-- Download the trained model from *[TO BE RELEASED]*
+
+## Inference on your images
+
+In below explaination, I will use `assets/demo.png` for example.
+- ![](assets/demo.png) (modified from PanoContext dataset)
 
 
-### 2. Pre-processing (Align camera rotation pose)
-- Pre-process the above `assets/demo.png` by firing below command. See `python preprocess.py -h` for more detailed script usage help.
+### 1. Pre-processing (Align camera rotation pose)
+- **Execution**: Pre-process the above `assets/demo.png` by firing below command. 
     ```
     python preprocess.py --img_glob assets/demo.png --output_dir assets/preprocessed/
     ```
-    - Arguments explanation:
-        - `--img_glob` telling the path to your fasinated 360 room image(s).
-        - `--output_dir` telling the path to the directory for dumping the results.
-        - *Hint*: you can use shell-style wildcards with quote (e.g. "my_fasinated_img_dir/\*png") to process multiple images in one shot.
-- Under the given `--output_dir`, you will get results like below and prefix with source image basename.
+    - `--img_glob` telling the path to your 360 room image(s).
+        - support shell-style wildcards with quote (e.g. `"my_fasinated_img_dir/*png"`).
+    - `--output_dir` telling the path to the directory for dumping the results.
+    - See `python preprocess.py -h` for more detailed script usage help.
+- **Outputs**: Under the given `--output_dir`, you will get results like below and prefix with source image basename.
     - The aligned rgb images `[SOURCE BASENAME]_aligned_rgb.png` and line segments images `[SOURCE BASENAME]_aligned_line.png`
         - `demo_aligned_rgb.png` | `demo_aligned_line.png`
           :--------------------: | :---------------------:
           ![](assets/preprocessed/demo_aligned_rgb.png) | ![](assets/preprocessed/demo_aligned_line.png)
     - The detected vanishing points `[SOURCE BASENAME]_VP.txt` (Here `demo_VP.txt`)
         ```
-        -0.006676 -0.499807 0.866111
-        0.000622 0.866128 0.499821
-        0.999992 -0.002519 0.003119
+        -0.002278 -0.500449 0.865763
+        0.000895 0.865764 0.500452
+        0.999999 -0.001137 0.000178
         ```
-- *[TODO]* implement other VPs detection algorithm to reduce processing time
 
 
-### 3. Estimating layout with HorizonNet
-- Predict the layout from above aligned image and line segments by firing below command.
+### 2. Estimating layout with HorizonNet
+- **Execution**: Predict the layout from above aligned image and line segments by firing below command.
     ```
-    python inference.py --pth ckpt/resnet50-rnn.pth --img_glob assets/preprocessed/demo_aligned_rgb.png --output_dir assets/inferenced --visualize
+    python inference.py --flip --pth ckpt/finetune_general.pth --img_glob assets/preprocessed/demo_aligned_rgb.png --output_dir assets/inferenced --visualize --relax_cuboid
     ```
-- Arguments explanation:
+    - `--flip` optional testing augmentation.
     - `--pth` path to the trained model.
     - `--img_glob` path to the preprocessed image.
     - `--output_dir` path to the directory to dump results.
-    - *Hint*: for the two glob, you can use wildcards with quote
-    - *Hint*: for better result, you can add `--flip`, `--rotate 0.25 0.5 0.75`, `--post_optimization`
-- you will get results like below and prefix with source image basename.
+    - `--visualize` optinoal for visualizing model raw outputs.
+    - `--relax_cuboid`
+        - **Model trained on cuboid only**: do NOT add `--relax_cuboid` to force outputing cuboid
+        - **Model trained on general shaped**: always add `--relax_cuboid`
+- **Outputs**: You will get results like below and prefix with source image basename.
     - The 1d representation are visualized under file name `[SOURCE BASENAME].raw.png`
     - The extracted corners of the layout `[SOURCE BASENAME].json`
         ```
-        {"z0": 50.0, "z1": -55.15687561035156, "uv": [[0.10213533043861389, 0.31251659989356995], [0.10213533043861389, 0.7001833319664001], [0.4487144351005554, 0.39285698533058167], [0.4487144351005554, 0.6152310967445374], [0.5983865857124329, 0.4072076976299286], [0.5983865857124329, 0.5997158288955688], [0.8371391892433167, 0.3685642182826996], [0.8371391892433167, 0.6412822008132935]]}
+        {"z0": 50.0, "z1": -53.993988037109375, "uv": [[0.0146484375, 0.3008330762386322], [0.0146484375, 0.7089354991912842], [0.007335239555686712, 0.38581281900405884], [0.007335239555686712, 0.6204522848129272], [0.0517578125, 0.3912762403488159], [0.0517578125, 0.6146637797355652], [0.4485706090927124, 0.3936861753463745], [0.4485706090927124, 0.6121071577072144], [0.5978592038154602, 0.4077087640762329], [0.5978592038154602, 0.597193717956543], [0.8074917793273926, 0.35766440629959106], [0.8074917793273926, 0.6501006484031677], [0.8803366422653198, 0.2525349259376526], [0.8803366422653198, 0.7577382922172546], [0.925480306148529, 0.3167843818664551], [0.925480306148529, 0.6925708055496216]]}
         ```
 
 
-### 4. Layout 3D Viewer
-- A pure python script to visualize the predicted layout in 3D using points cloud. See `python layout_viewer.py -h` for usage help.
+### 3. Layout 3D Viewer
+- **Execution**: Visualizing the predicted layout in 3D using points cloud.
     ```
     python layout_viewer.py --img assets/preprocessed/demo_aligned_rgb.png --layout assets/inferenced/demo_aligned_rgb.json --ignore_ceiling
     ```
-    - Arguements explanation:
-        - `--img` path to preprocessed image
-        - `--layout` path to the json output from `inference.py`
-        - `--ignore_ceiling` prevent showing ceiling
-- ![](assets/demo_3d_layout.png)
-    - In the window, you can use mouse and scroll to change the viewport
+    - `--img` path to preprocessed image
+    - `--layout` path to the json output from `inference.py`
+    - `--ignore_ceiling` prevent showing ceiling
+    - See `python layout_viewer.py -h` for usage help.
+- **Outputs**: In the window, you can use mouse and scroll wheel to change the viewport
+    - ![](assets/demo_3d_layout.jpg)
 
 
-## How to Train
-[WIP]
+## Training
+See `python train.py -h` for detailed options explaination.  
+Example:
+```
+python train.py --id resnet50_rnn --use_rnn
+```
+- Important arguments:
+    - `--id` required. experiment id to name checkpoints and logs
+    - `--ckpt` folder to output checkpoints (default: ./ckpt)
+    - `--logs` folder to logging (default: ./logs)
+    - `--pth` finetune mode if given. path to load saved checkpoint.
+    - `--backbone` {resnet18,resnet50,resnet101} backbone of the network (default: resnet50)
+    - `--use_rnn` whether to use rnn (default: False)
+    - `--train_root_dir` root directory to training dataset. (default: `data/train`)
+    - `--valid_root_dir` root directory to validation dataset. (default: `data/valid/`)
+    - `--batch_size_train` training mini-batch size (default: 8)
+    - `--epochs` epochs to train (default: 300)
+    - `--lr` learning rate (default: 0.0001)
 
 
 ## Quantitative Evaluation
-[WIP]
+To evaluate on LayoutNet dataset, first running the cuboid trained model for all testing images:
+```
+python inference.py --flip --pth ckpt/resnet50-rnn.pth --img_glob "data/test/img/*png" --output_dir tmp
+```
+- `--flip` optional testing augmentation.
+- `--img_glob` shell-style wildcards for all testing images.
+- `--output_dir` path to the directory to dump results.
+
+To get the quantitative result:
+```
+python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/test/label_cor/*txt"
+```
+- `--dt_glob` shell-style wildcards for all the model estimation.
+- `--gt_glob` shell-style wildcards for all the ground truth.
+Replace `"tmp/*json"`
+- with `"tmp/pano*json"` for evaluate on PaonContext only
+- with `"tmp/camera*json"` for evaluate on Stanford2D3D only
+
+The quantitative result for the pretrained model is shown below:
+
+| Testing Dataset | 3D IoU(%) | Corner error(%) | Pixel error(%) |
+| :-------------: | :-------: | :------: | :--------------: |
+| PanoContext     | `82.96` | `0.75` | `2.16` |
+| Stanford2D3D    | `83.80` | `0.65` | `1.96` |
+| All             | `83.53` | `0.68` | `2.02` | 
 
 
 ## Citation
