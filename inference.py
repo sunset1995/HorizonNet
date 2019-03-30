@@ -60,7 +60,8 @@ def augment_undo(x_imgs_augmented, aug_type):
     return np.array(x_imgs)
 
 
-def inference(net, x, device, flip=False, rotate=[], visualize=False, force_cuboid=True):
+def inference(net, x, device, flip=False, rotate=[], visualize=False,
+              force_cuboid=True, min_v=None, r=0.05):
     '''
     net   : the trained HorizonNet
     x     : tensor in shape [1, 3, 512, 1024]
@@ -88,9 +89,10 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False, force_cubo
     y_cor_ = y_cor_[0, 0]
 
     # Detech wall-wall peaks (cuboid version)
+    if min_v is None:
+        min_v = 0 if force_cuboid else 0.05
+    r = int(round(W * r / 2))
     N = 4 if force_cuboid else None
-    min_v = 0 if force_cuboid else 0.05
-    r = int(round(W * 0.05 / 2))
     xs_ = find_N_peaks(y_cor_, r=r, min_v=min_v, N=N)[0]
 
     # Init floor/ceil plane
@@ -127,7 +129,6 @@ if __name__ == '__main__':
                              'or you should use preporcess.py to do so.')
     parser.add_argument('--output_dir', required=True)
     parser.add_argument('--visualize', action='store_true')
-    parser.add_argument('--relax_cuboid', action='store_true')
     # Augmentation related
     parser.add_argument('--flip', action='store_true',
                         help='whether to perfome left-right flip. '
@@ -136,6 +137,10 @@ if __name__ == '__main__':
                         help='whether to perfome horizontal rotate. '
                              'each elements indicate fraction of image width. '
                              '# of input xlen(rotate).')
+    # Post-processing realted
+    parser.add_argument('--r', default=0.05, type=float)
+    parser.add_argument('--min_v', default=None, type=float)
+    parser.add_argument('--relax_cuboid', action='store_true')
     # Misc arguments
     parser.add_argument('--no_cuda', action='store_true',
                         help='disable cuda')
@@ -174,7 +179,8 @@ if __name__ == '__main__':
             cor_id, z0, z1, vis_out = inference(net, x, device,
                                                 args.flip, args.rotate,
                                                 args.visualize,
-                                                not args.relax_cuboid)
+                                                not args.relax_cuboid,
+                                                args.min_v, args.r)
 
             # Output result
             with open(os.path.join(args.output_dir, k + '.json'), 'w') as f:
