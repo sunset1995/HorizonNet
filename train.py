@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from model import HorizonNet
 from dataset import PanoCorBonDataset
-from misc.utils import group_weight, adjust_learning_rate, save_model
+from misc.utils import group_weight, adjust_learning_rate, save_model, load_trained_model
 
 
 def feed_forward(net, x, y_bon, y_cor):
@@ -38,6 +38,9 @@ if __name__ == '__main__':
                         help='folder to output checkpoints')
     parser.add_argument('--logs', default='./logs',
                         help='folder to logging')
+    parser.add_argument('--pth', default=None,
+                        help='path to load saved checkpoint.'
+                             '(finetuning)')
     # Model related
     parser.add_argument('--backbone', default='resnet50',
                         choices=['resnet18', 'resnet50', 'resnet101'],
@@ -118,7 +121,12 @@ if __name__ == '__main__':
                               pin_memory=not args.no_cuda)
 
     # Create model
-    net = HorizonNet(args.backbone, args.use_rnn).to(device)
+    if args.pth is not None:
+        print('Finetune model is given.')
+        print('Ignore --backbone and --use_rnn')
+        net = load_trained_model(HorizonNet, args.pth).to(device)
+    else:
+        net = HorizonNet(args.backbone, args.use_rnn).to(device)
 
     # Create optimizer
     if args.optim == 'SGD':
