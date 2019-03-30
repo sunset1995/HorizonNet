@@ -51,7 +51,7 @@ Please [cite us](#citation) if you use this work.
     - `finetune_general` is re-annotated by us from `train` and `valid`. It contains  65 general shaped rooms.
 - [Cuboid room pretrained model](https://drive.google.com/open?id=1N3y2AVrd8GATVdz7VPjS8r24bDSmpbb7)
     - Trained on `train/` 817 pano images
-- [General room pretrained model](https://drive.google.com/open?id=1N3y2AVrd8GATVdz7VPjS8r24bDSmpbb7)
+- [General room pretrained model](https://drive.google.com/open?id=1y7I4jfruer4uoMs0_YHAHHUDlcpGZmc-)
     - Trained on `train/` 817 pano images first
     - Finetuned on `finetune_general/` 66 images
 
