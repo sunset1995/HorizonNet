@@ -60,7 +60,7 @@ def augment_undo(x_imgs_augmented, aug_type):
     return np.array(x_imgs)
 
 
-def inference(net, x, device, flip=False, rotate=[], visualize=False):
+def inference(net, x, device, flip=False, rotate=[], visualize=False, force_cuboid=True):
     '''
     net   : the trained HorizonNet
     x     : tensor in shape [1, 3, 512, 1024]
@@ -88,22 +88,22 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False):
     y_cor_ = y_cor_[0, 0]
 
     # Detech wall-wall peaks (cuboid version)
-    xs_ = find_N_peaks(y_cor_, r=29, min_v=0, N=4)[0]
+    N = 4 if force_cuboid else None
+    xs_ = find_N_peaks(y_cor_, r=29, min_v=0, N=N)[0]
 
     # Init floor/ceil plane
     z0 = 50
     _, z1 = post_proc.np_refine_by_fix_z(*y_bon_, z0)
 
     # Generate cuboid wall-wall
-    cor, _ = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=True)
+    cor, _ = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=force_cuboid)
 
     # Expand with btn coory
     cor = np.hstack([cor, post_proc.infer_coory(cor[:, 1], z1 - z0, z0)[:, None]])
-    assert len(cor) == 4, 'Extracted corner not cuboid !?'
 
     # Collect corner position in equirectangular
-    cor_id = np.zeros((8, 2), np.float32)
-    for j in range(4):
+    cor_id = np.zeros((len(cor)*2, 2), np.float32)
+    for j in range(len(cor)):
         cor_id[j*2] = cor[j, 0], cor[j, 1]
         cor_id[j*2 + 1] = cor[j, 0], cor[j, 2]
 
@@ -125,6 +125,7 @@ if __name__ == '__main__':
                              'or you should use preporcess.py to do so.')
     parser.add_argument('--output_dir', required=True)
     parser.add_argument('--visualize', action='store_true')
+    parser.add_argument('--relax_cuboid', action='store_true')
     # Augmentation related
     parser.add_argument('--flip', action='store_true',
                         help='whether to perfome left-right flip. '
@@ -170,7 +171,8 @@ if __name__ == '__main__':
             # Inferenceing corners
             cor_id, z0, z1, vis_out = inference(net, x, device,
                                                 args.flip, args.rotate,
-                                                args.visualize)
+                                                args.visualize,
+                                                not args.relax_cuboid)
 
             # Output result
             with open(os.path.join(args.output_dir, k + '.json'), 'w') as f:

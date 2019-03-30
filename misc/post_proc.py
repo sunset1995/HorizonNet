@@ -204,6 +204,7 @@ def get_rot_rad(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, flo
 
 def gen_ww_cuboid(xy, gpid, tol):
     xy_cor = []
+    assert len(np.unique(gpid)) == 4
 
     # For each part seperated by wall-wall peak, voting for a wall
     for j in range(4):
@@ -237,6 +238,68 @@ def gen_ww_cuboid(xy, gpid, tol):
     return xy_cor
 
 
+def gen_ww_general(init_coorx, xy, gpid, tol):
+    xy_cor = []
+    assert len(init_coorx) == len(np.unique(gpid))
+
+    # Candidate for each part seperated by wall-wall boundary
+    for j in range(len(init_coorx)):
+        now_x = xy[gpid == j, 0]
+        now_y = xy[gpid == j, 1]
+        new_x, x_score, x_l1 = vote(now_x, tol)
+        new_y, y_score, y_l1 = vote(now_y, tol)
+        u0 = np_coorx2u(init_coorx[(j - 1 + len(init_coorx)) % len(init_coorx)])
+        u1 = np_coorx2u(init_coorx[j])
+        if (x_score, -x_l1) > (y_score, -y_l1):
+            xy_cor.append({'type': 0, 'val': new_x, 'score': x_score, 'action': 'ori', 'gpid': j, 'u0': u0, 'u1': u1, 'tbd': True})
+        else:
+            xy_cor.append({'type': 1, 'val': new_y, 'score': y_score, 'action': 'ori', 'gpid': j, 'u0': u0, 'u1': u1, 'tbd': True})
+
+    # Construct wall from highest score to lowest
+    while True:
+        # Finding undetermined wall with highest score
+        tbd = -1
+        for i in range(len(xy_cor)):
+            if xy_cor[i]['tbd'] and (tbd == -1 or xy_cor[i]['score'] > xy_cor[tbd]['score']):
+                tbd = i
+        if tbd == -1:
+            break
+
+        # This wall is determined
+        xy_cor[tbd]['tbd'] = False
+        p_idx = (tbd - 1 + len(xy_cor)) % len(xy_cor)
+        n_idx = (tbd + 1) % len(xy_cor)
+
+        # Below checking special case
+        # Two adjacency walls are not determined yet => not special case
+        if xy_cor[p_idx]['tbd'] or xy_cor[n_idx]['tbd']:
+            continue
+        if xy_cor[p_idx]['type'] == xy_cor[n_idx]['type']:
+            # Two adjacency walls are same type, current wall should be different
+            if xy_cor[tbd]['type'] == xy_cor[p_idx]['type']:
+                # Fallback: three walls with same type => forced change the middle wall
+                xy_cor[tbd]['type'] = (xy_cor[tbd]['type'] + 1) % 2
+                xy_cor[tbd]['action'] = 'forced change'
+                xy_cor[tbd]['val'] = xy[gpid == xy_cor[tbd]['gpid'], xy_cor[tbd]['type']].mean()
+        else:
+            # Two adjacency walls are different type => add one
+            tp0 = xy_cor[n_idx]['type']
+            tp1 = xy_cor[p_idx]['type']
+            if xy_cor[p_idx]['type'] == 0:
+                val0 = np_x_u_solve_y(xy_cor[p_idx]['val'], xy_cor[p_idx]['u1'])
+                val1 = np_y_u_solve_x(xy_cor[n_idx]['val'], xy_cor[n_idx]['u0'])
+            else:
+                val0 = np_y_u_solve_x(xy_cor[p_idx]['val'], xy_cor[p_idx]['u1'])
+                val1 = np_x_u_solve_y(xy_cor[n_idx]['val'], xy_cor[n_idx]['u0'])
+            new_add = [
+                {'type': tp0, 'val': val0, 'score': 0, 'action': 'forced infer', 'gpid': -1, 'u0': -1, 'u1': -1, 'tbd': False},
+                {'type': tp1, 'val': val1, 'score': 0, 'action': 'forced infer', 'gpid': -1, 'u0': -1, 'u1': -1, 'tbd': False},
+            ]
+            xy_cor = xy_cor[:tbd] + new_add + xy_cor[tbd+1:]
+
+    return xy_cor
+
+
 def gen_ww(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, floorH=512, tol=3, force_cuboid=True):
     gpid = get_gpid(init_coorx, coorW)
     coor = np.hstack([np.arange(coorW)[:, None], coory[:, None]])
@@ -245,6 +308,8 @@ def gen_ww(init_coorx, coory, z=50, coorW=1024, coorH=512, floorW=1024, floorH=5
     # Generate wall-wall
     if force_cuboid:
         xy_cor = gen_ww_cuboid(xy, gpid, tol)
+    else:
+        xy_cor = gen_ww_general(init_coorx, xy, gpid, tol)
 
     # Ceiling view to normal view
     cor = []
