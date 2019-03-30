@@ -107,18 +107,19 @@ if __name__ == '__main__':
         root_dir=args.train_root_dir,
         flip=not args.no_flip, rotate=not args.no_rotate, gamma=not args.no_gamma,
         stretch=not args.no_pano_stretch)
-    dataset_valid = PanoCorBonDataset(
-        root_dir=args.valid_root_dir,
-        flip=False, rotate=False, gamma=False,
-        stretch=False)
     loader_train = DataLoader(dataset_train, args.batch_size_train,
                               shuffle=True, drop_last=True,
                               num_workers=args.num_workers,
                               pin_memory=not args.no_cuda)
-    loader_valid = DataLoader(dataset_valid, args.batch_size_valid,
-                              shuffle=False, drop_last=False,
-                              num_workers=args.num_workers,
-                              pin_memory=not args.no_cuda)
+    if args.valid_root_dir:
+        dataset_valid = PanoCorBonDataset(
+            root_dir=args.valid_root_dir,
+            flip=False, rotate=False, gamma=False,
+            stretch=False)
+        loader_valid = DataLoader(dataset_valid, args.batch_size_valid,
+                                  shuffle=False, drop_last=False,
+                                  num_workers=args.num_workers,
+                                  pin_memory=not args.no_cuda)
 
     # Create model
     if args.pth is not None:
@@ -183,31 +184,32 @@ if __name__ == '__main__':
 
         # Valid phase
         net.eval()
-        iterator_valid = iter(loader_valid)
-        valid_loss = {}
-        valid_num = 0
-        for _ in trange(len(loader_valid),
-                        desc='Valid ep%d' % ith_epoch, position=2):
-            x, y_bon, y_cor = next(iterator_valid)
-            with torch.no_grad():
-                losses = feed_forward(net, x, y_bon, y_cor)
-            for k, v in losses.items():
-                valid_loss[k] = valid_loss.get(k, 0) + v.item() * x.size(0)
-                valid_num += x.size(0)
+        if args.valid_root_dir:
+            iterator_valid = iter(loader_valid)
+            valid_loss = {}
+            valid_num = 0
+            for _ in trange(len(loader_valid),
+                            desc='Valid ep%d' % ith_epoch, position=2):
+                x, y_bon, y_cor = next(iterator_valid)
+                with torch.no_grad():
+                    losses = feed_forward(net, x, y_bon, y_cor)
+                for k, v in losses.items():
+                    valid_loss[k] = valid_loss.get(k, 0) + v.item() * x.size(0)
+                    valid_num += x.size(0)
 
-        for k, v in valid_loss.items():
-            k = 'valid/%s' % k
-            tb_writer.add_scalar(k, v / valid_num, ith_epoch)
+            for k, v in valid_loss.items():
+                k = 'valid/%s' % k
+                tb_writer.add_scalar(k, v / valid_num, ith_epoch)
+
+            # Save best validation loss model
+            if valid_loss['total'] < args.best_valid_loss:
+                args.best_valid_loss = valid_loss['total']
+                save_model(net,
+                           os.path.join(args.ckpt, args.id, 'best_valid.pth'),
+                           ith_epoch)
 
         # Periodically save model
         if ith_epoch % args.save_every == 0:
             save_model(net,
                        os.path.join(args.ckpt, args.id, 'epoch_%d.pth' % ith_epoch),
-                       ith_epoch)
-
-        # Save best validation loss model
-        if valid_loss['total'] < args.best_valid_loss:
-            args.best_valid_loss = valid_loss['total']
-            save_model(net,
-                       os.path.join(args.ckpt, args.id, 'best_valid.pth'),
                        ith_epoch)
