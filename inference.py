@@ -89,7 +89,9 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False, force_cubo
 
     # Detech wall-wall peaks (cuboid version)
     N = 4 if force_cuboid else None
-    xs_ = find_N_peaks(y_cor_, r=29, min_v=0, N=N)[0]
+    min_v = 0 if force_cuboid else 0.05
+    r = int(round(W * 0.05 / 2))
+    xs_ = find_N_peaks(y_cor_, r=r, min_v=min_v, N=N)[0]
 
     # Init floor/ceil plane
     z0 = 50
@@ -184,4 +186,7 @@ if __name__ == '__main__':
 
             if vis_out is not None:
                 vis_path = os.path.join(args.output_dir, k + '.raw.png')
-                Image.fromarray(vis_out).save(vis_path)
+                vh, vw = vis_out.shape[:2]
+                Image.fromarray(vis_out)\
+                     .resize((vw//2, vh//2), Image.LANCZOS)\
+                     .save(vis_path)
