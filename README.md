@@ -7,16 +7,19 @@ Overview of the pipeline:
 ![](assets/pipeline.jpg)
 
 This repo is a **pure python** implementation that you can:
-- [x] **Inference on your images** to get cuboid or general shaped room layout
-- [x] **3D layout viewer**
-- [x] **Correct pose** for your panorama images
-- [x] **Pano Stretch Augmentation** copy and paste to apply on your own task
-- [x] **Quantitative evaluatation** (3D IoU, Corner Error, Pixel Error)
-    - [x] cuboid shape
-    - [ ] general shape
-- [ ] Faster pre-processing script (pose correction) (maybe [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
-- [ ] Training/preparation script for customized dataset
-- [ ] Update bibtex to CVPR IEEE version
+- **Inference on your images** to get cuboid or general shaped room layout
+- **3D layout viewer**
+- **Correct pose** for your panorama images
+- **Pano Stretch Augmentation** copy and paste to apply on your own task
+- **Quantitative evaluatation** (3D IoU, Corner Error, Pixel Error)
+    - uboid shape
+    - [TODO] general shape
+- [TODO] Merge parallel wall with short distance in post-processing
+- [TODO] Better occlusion texture in 3d viewer
+- [TODO] Show more results
+- [TODO] Faster pre-processing script (pose correction) (maybe [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
+- [TODO] Training/preparation script for customized dataset
+- [TODO] Update bibtex to CVPR IEEE version
 
 Please [cite us](#citation) if you use this work.
 
