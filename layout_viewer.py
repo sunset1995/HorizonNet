@@ -4,13 +4,9 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm, trange
 from scipy.ndimage import map_coordinates
-from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon
-
-import functools
-from multiprocessing import Pool
 
 from misc.post_proc import np_coor2xy, np_coory2v
+from misc.panostretch import pano_connect_points
 
 
 def xyz_2_coorxy(xs, ys, zs, H, W):
@@ -21,11 +17,51 @@ def xyz_2_coorxy(xs, ys, zs, H, W):
     return coorx, coory
 
 
-def pt_in_poly(poly, pt):
-    return poly.contains(Point(pt))
+def create_ceiling_floor_mask(cor_id, H, W):
+    # Prepare 1d ceiling-wall/floor-wall boundary
+    c_pts = []
+    f_pts = []
+    n_cor = len(cor_id)
+    for i in range(n_cor // 2):
+        # Ceiling boundary points
+        xys = pano_connect_points(cor_id[i*2],
+                                  cor_id[(i*2+2) % n_cor],
+                                  z=-50, w=W, h=H)
+        c_pts.extend(xys)
+
+        # Floor boundary points
+        xys = pano_connect_points(cor_id[i*2+1],
+                                  cor_id[(i*2+3) % n_cor],
+                                  z=50, w=W, h=H)
+        f_pts.extend(xys)
+
+    # Sort for interpolate
+    c_pts = np.array(c_pts)
+    c_pts = c_pts[np.argsort(c_pts[:, 0] * H - c_pts[:, 1])]
+    f_pts = np.array(f_pts)
+    f_pts = f_pts[np.argsort(f_pts[:, 0] * H + f_pts[:, 1])]
+
+    # # Removed duplicated point
+    c_pts = np.concatenate([c_pts[:1], c_pts[1:][np.diff(c_pts[:, 0]) > 0]], 0)
+    f_pts = np.concatenate([f_pts[:1], f_pts[1:][np.diff(f_pts[:, 0]) > 0]], 0)
+
+    # Generate boundary for each image column
+    c_bon = np.interp(np.arange(W), c_pts[:, 0], c_pts[:, 1])
+    f_bon = np.interp(np.arange(W), f_pts[:, 0], f_pts[:, 1])
+
+    # Generate mask
+    mask = np.zeros((H, W), np.bool)
+    for i in range(W):
+        u = max(0, int(round(c_bon[i])) + 1)
+        b = min(W, int(round(f_bon[i])))
+        mask[:u, i] = 1
+        mask[b:, i] = 1
+
+    return mask
 
 
-def warp_walls(xy, floor_z, ceil_z, H, W, ppm, alpha):
+def warp_walls(equirect_texture, xy, floor_z, ceil_z, ppm, alpha):
+    H, W = equirect_texture.shape[:2]
     all_rgba = []
     all_xyz = []
     for i in trange(len(xy), desc='Processing walls'):
@@ -54,7 +90,9 @@ def warp_walls(xy, floor_z, ceil_z, H, W, ppm, alpha):
     return all_rgba, all_xyz
 
 
-def warp_floor_ceiling(xy, z_floor, z_ceiling, H, W, ppm, alpha, n_thread):
+def warp_floor_ceiling(equirect_texture, mask, xy, z_floor, z_ceiling, ppm, alpha, n_thread):
+    assert equirect_texture.shape[:2] == mask.shape[:2]
+    H, W = equirect_texture.shape[:2]
     min_x = xy[:, 0].min()
     max_x = xy[:, 0].max()
     min_y = xy[:, 1].min()
@@ -68,33 +106,29 @@ def warp_floor_ceiling(xy, z_floor, z_ceiling, H, W, ppm, alpha, n_thread):
     coorx_floor, coory_floor = xyz_2_coorxy(xs, ys, zs_floor, H, W)
     coorx_ceil, coory_ceil = xyz_2_coorxy(xs, ys, zs_ceil, H, W)
 
+    # Project view
     floor_texture = np.stack([
         map_coordinates(equirect_texture[..., 0], [coory_floor, coorx_floor], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 1], [coory_floor, coorx_floor], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 2], [coory_floor, coorx_floor], order=1, mode='wrap'),
         np.zeros([t_h, t_w]) + alpha,
-    ], -1).reshape(-1, 4)
-    floor_xyz = np.stack([xs, ys, zs_floor], axis=-1).reshape(-1, 3)
+    ], -1)
+    floor_mask = map_coordinates(mask, [coory_floor, coorx_floor], order=0)
+    floor_xyz = np.stack([xs, ys, zs_floor], axis=-1)
 
     ceil_texture = np.stack([
         map_coordinates(equirect_texture[..., 0], [coory_ceil, coorx_ceil], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 1], [coory_ceil, coorx_ceil], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 2], [coory_ceil, coorx_ceil], order=1, mode='wrap'),
         np.zeros([t_h, t_w]) + alpha,
-    ], -1).reshape(-1, 4)
-    ceil_xyz = np.stack([xs, ys, zs_ceil], axis=-1).reshape(-1, 3)
+    ], -1)
+    ceil_mask = map_coordinates(mask, [coory_ceil, coorx_ceil], order=0)
+    ceil_xyz = np.stack([xs, ys, zs_ceil], axis=-1)
 
-    if len(floor_xy) != 4:
-        xy_poly = Polygon(xy)
-        with Pool(n_thread) as p:
-            sel = list(tqdm(
-                p.imap(functools.partial(pt_in_poly, xy_poly), floor_xyz[:, :2]),
-                total=len(floor_xyz), desc='Checking'
-            ))
-        floor_texture = floor_texture[sel]
-        floor_xyz = floor_xyz[sel]
-        ceil_texture = ceil_texture[sel]
-        ceil_xyz = ceil_xyz[sel]
+    floor_texture = floor_texture[floor_mask]
+    floor_xyz = floor_xyz[floor_mask]
+    ceil_texture = ceil_texture[ceil_mask]
+    ceil_xyz = ceil_xyz[ceil_mask]
 
     return floor_texture, floor_xyz, ceil_texture, ceil_xyz
 
@@ -132,6 +166,8 @@ if __name__ == '__main__':
     cor_id[:, 0] *= W
     cor_id[:, 1] *= H
 
+    mask = create_ceiling_floor_mask(cor_id, H, W)
+
     # Convert cor_id to 3d xyz
     N = len(cor_id) // 2
     floor_z = -args.camera_height
@@ -141,11 +177,12 @@ if __name__ == '__main__':
     ceil_z = (c * np.tan(v)).mean()
 
     # Warp each wall
-    all_rgba, all_xyz = warp_walls(floor_xy, floor_z, ceil_z, H, W, args.ppm, args.alpha)
+    all_rgba, all_xyz = warp_walls(equirect_texture, floor_xy, floor_z, ceil_z, args.ppm, args.alpha)
 
     # Warp floor and ceiling
     if not args.ignore_floor or not args.ignore_ceiling:
-        fi, fp, ci, cp = warp_floor_ceiling(floor_xy, floor_z, ceil_z, H, W,
+        fi, fp, ci, cp = warp_floor_ceiling(equirect_texture, mask,
+                                            floor_xy, floor_z, ceil_z,
                                             ppm=args.ppm,
                                             alpha=args.alpha,
                                             n_thread=args.threads)
