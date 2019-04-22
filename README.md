@@ -169,6 +169,11 @@ The quantitative result for the pretrained model is shown below:
 | All             | `83.53` | `0.68` | `2.02` | 
 
 
+## Acknowledgement
+- Credit of this repo is shared with [ChiWeiHsiao](https://github.com/ChiWeiHsiao).
+- Thanks [limchaos](https://github.com/limchaos) for the suggestion about the potential boost by fixing the non-expected behaviour of Pytorch dataloader. (See [Issue#4](https://github.com/sunset1995/HorizonNet/issues/4))
+
+
 ## Citation
 Please cite our paper for any purpose of usage.
 ```
