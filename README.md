@@ -20,7 +20,7 @@ This repo is a **pure python** implementation that you can:
 - [TODO] Merge parallel wall with short distance in post-processing
 - [TODO] Better occlusion texture in 3d viewer
 - [TODO] Show more results
-- [TODO] Faster pre-processing script (pose correction) (maybe [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
+- [TODO] Faster pre-processing script (pose correction) (maybe cython implementation or [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
 - [TODO] Training/preparation script for customized dataset
 - [TODO] Update bibtex to CVPR IEEE version
 
