@@ -110,7 +110,8 @@ if __name__ == '__main__':
     loader_train = DataLoader(dataset_train, args.batch_size_train,
                               shuffle=True, drop_last=True,
                               num_workers=args.num_workers,
-                              pin_memory=not args.no_cuda)
+                              pin_memory=not args.no_cuda,
+                              worker_init_fn=lambda x: np.random.seed())
     if args.valid_root_dir:
         dataset_valid = PanoCorBonDataset(
             root_dir=args.valid_root_dir,
