@@ -270,12 +270,46 @@ def gen_ww_general(init_coorx, xy, gpid, tol):
         p_idx = (tbd - 1 + len(xy_cor)) % len(xy_cor)
         n_idx = (tbd + 1) % len(xy_cor)
 
-        # Below checking special case
+        num_tbd_neighbor = xy_cor[p_idx]['tbd'] + xy_cor[n_idx]['tbd']
+
         # Two adjacency walls are not determined yet => not special case
-        if xy_cor[p_idx]['tbd'] or xy_cor[n_idx]['tbd']:
+        if num_tbd_neighbor == 2:
             continue
+
+        # Only one of adjacency two walls is determine => add now or later special case
+        if num_tbd_neighbor == 1:
+            if (not xy_cor[p_idx]['tbd'] and xy_cor[p_idx]['type'] == xy_cor[tbd]['type']) or\
+                    (not xy_cor[n_idx]['tbd'] and xy_cor[n_idx]['type'] == xy_cor[tbd]['type']):
+                # Current wall is different from one determined adjacency wall
+                if xy_cor[tbd]['score'] >= -1:
+                    # Later special case, add current to tbd
+                    xy_cor[tbd]['tbd'] = True
+                    xy_cor[tbd]['score'] -= 100
+                else:
+                    # Fallback: forced change the current wall or infinite loop
+                    if not xy_cor[p_idx]['tbd']:
+                        insert_at = tbd
+                        if xy_cor[p_idx]['type'] == 0:
+                            new_val = np_x_u_solve_y(xy_cor[p_idx]['val'], xy_cor[p_idx]['u1'])
+                            new_type = 1
+                        else:
+                            new_val = np_y_u_solve_x(xy_cor[p_idx]['val'], xy_cor[p_idx]['u1'])
+                            new_type = 0
+                    else:
+                        insert_at = n_idx
+                        if xy_cor[n_idx]['type'] == 0:
+                            new_val = np_x_u_solve_y(xy_cor[n_idx]['val'], xy_cor[n_idx]['u0'])
+                            new_type = 1
+                        else:
+                            new_val = np_y_u_solve_x(xy_cor[n_idx]['val'], xy_cor[n_idx]['u0'])
+                            new_type = 0
+                    new_add = {'type': new_type, 'val': new_val, 'score': 0, 'action': 'forced infer', 'gpid': -1, 'u0': -1, 'u1': -1, 'tbd': False}
+                    xy_cor.insert(insert_at, new_add)
+            continue
+
+        # Below checking special case
         if xy_cor[p_idx]['type'] == xy_cor[n_idx]['type']:
-            # Two adjacency walls are same type, current wall should be different
+            # Two adjacency walls are same type, current wall should be differen type
             if xy_cor[tbd]['type'] == xy_cor[p_idx]['type']:
                 # Fallback: three walls with same type => forced change the middle wall
                 xy_cor[tbd]['type'] = (xy_cor[tbd]['type'] + 1) % 2
