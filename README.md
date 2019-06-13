@@ -6,8 +6,7 @@
 This is the implementation of our CVPR'19 [
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation.](https://arxiv.org/abs/1901.03861) ([project page](https://sunset1995.github.io/HorizonNet/))
 
-Overview of the pipeline:
-![](assets/pipeline.jpg)
+![](assets/teaser.jpg)
 
 This repo is a **pure python** implementation that you can:
 - **Inference on your images** to get cuboid or general shaped room layout
@@ -15,16 +14,12 @@ This repo is a **pure python** implementation that you can:
 - **Correct pose** for your panorama images
 - **Pano Stretch Augmentation** copy and paste to apply on your own task
 - **Quantitative evaluatation** (3D IoU, Corner Error, Pixel Error)
-    - uboid shape
-    - [TODO] general shape
-- [TODO] Merge parallel wall with short distance in post-processing
-- [TODO] Better occlusion texture in 3d viewer
-- [TODO] Show more results
-- [TODO] Faster pre-processing script (pose correction) (maybe cython implementation or [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
-- [TODO] Training/preparation script for customized dataset
-- [TODO] Update bibtex to CVPR IEEE version
+    - cuboid shape
+    - general shape
+- **Your own dataset** preparation and training
 
-Please [cite us](#citation) if you use this work.
+**Method Pipeline overview**:
+![](assets/pipeline.jpg)
 
 ## Requirements
 - Python 3
@@ -36,7 +31,7 @@ Please [cite us](#citation) if you use this work.
 - tqdm
 - tensorboardX
 - opencv-python>=3.1 (for pre-processing)
-- open3d (for layout 3D viewer)
+- open3d>=0.7 (for layout 3D viewer)
 
 
 ## Download
@@ -66,7 +61,7 @@ In below explaination, I will use `assets/demo.png` for example.
 
 
 ### 1. Pre-processing (Align camera rotation pose)
-- **Execution**: Pre-process the above `assets/demo.png` by firing below command. 
+- **Execution**: Pre-process the above `assets/demo.png` by firing below command.
     ```
     python preprocess.py --img_glob assets/demo.png --output_dir assets/preprocessed/
     ```
@@ -121,11 +116,15 @@ In below explaination, I will use `assets/demo.png` for example.
     - ![](assets/demo_3d_layout.jpg)
 
 
+## Your own dataset
+See [tutorial](README_PREPARE_DATASET.md) on how to prepare it.  
+
+
 ## Training
-See `python train.py -h` for detailed options explaination.  
+To train on a dataset, see `python train.py -h` for detailed options explaination.  
 Example:
 ```
-python train.py --id resnet50_rnn --use_rnn
+python train.py --id resnet50_rnn
 ```
 - Important arguments:
     - `--id` required. experiment id to name checkpoints and logs
@@ -133,7 +132,7 @@ python train.py --id resnet50_rnn --use_rnn
     - `--logs` folder to logging (default: ./logs)
     - `--pth` finetune mode if given. path to load saved checkpoint.
     - `--backbone` {resnet18,resnet50,resnet101} backbone of the network (default: resnet50)
-    - `--use_rnn` whether to use rnn (default: False)
+    - `--no_rnn` whether to remove rnn (default: False)
     - `--train_root_dir` root directory to training dataset. (default: `data/train`)
     - `--valid_root_dir` root directory to validation dataset. (default: `data/valid/`)
     - `--batch_size_train` training mini-batch size (default: 8)
@@ -141,7 +140,7 @@ python train.py --id resnet50_rnn --use_rnn
     - `--lr` learning rate (default: 0.0001)
 
 
-## Quantitative Evaluation
+## Quantitative Evaluation - Cuboid Layout
 To evaluate on LayoutNet dataset, first running the cuboid trained model for all testing images:
 ```
 python inference.py --flip --pth ckpt/resnet50-rnn.pth --img_glob "data/test/img/*png" --output_dir tmp
@@ -166,7 +165,18 @@ The quantitative result for the pretrained model is shown below:
 | :-------------: | :-------: | :------: | :--------------: |
 | PanoContext     | `82.96` | `0.75` | `2.16` |
 | Stanford2D3D    | `83.80` | `0.65` | `1.96` |
-| All             | `83.53` | `0.68` | `2.02` | 
+| All             | `83.53` | `0.68` | `2.02` |
+
+
+## Quantitative Evaluation - Genral Layout
+See `eval_general.py`. Detail description is WIP.
+
+
+## TODO
+- Merge parallel wall with short distance in post-processing
+- Show more results
+- Faster pre-processing script (pose correction) (maybe cython implementation or [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
+- Showing general layout cross-validation
 
 
 ## Acknowledgement
@@ -177,11 +187,12 @@ The quantitative result for the pretrained model is shown below:
 ## Citation
 Please cite our paper for any purpose of usage.
 ```
-@article{sun2019horizonnet,
-  title={HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation},
-  author={Sun, Cheng and Hsiao, Chi-Wei and Sun, Min and Chen, Hwann-Tzong},
-  journal={arXiv preprint arXiv:1901.03861},
-  year={2019}
+@InProceedings{Sun_2019_CVPR,
+    author = {Sun, Cheng and Hsiao, Chi-Wei and Sun, Min and Chen, Hwann-Tzong},
+    title = {HorizonNet: Learning Room Layout With 1D Representation and Pano Stretch Data Augmentation},
+    booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month = {June},
+    year = {2019}
 }
 ```
 
