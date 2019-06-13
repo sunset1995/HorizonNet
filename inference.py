@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import json
 import argparse
@@ -6,6 +7,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from scipy.ndimage.filters import maximum_filter
+from shapely.geometry import Polygon
 
 import torch
 import torch.nn as nn
@@ -88,19 +90,32 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False,
     y_bon_ = (y_bon_[0] / np.pi + 0.5) * H - 0.5
     y_cor_ = y_cor_[0, 0]
 
-    # Detech wall-wall peaks (cuboid version)
+    # Init floor/ceil plane
+    z0 = 50
+    _, z1 = post_proc.np_refine_by_fix_z(*y_bon_, z0)
+
+    # Detech wall-wall peaks
     if min_v is None:
         min_v = 0 if force_cuboid else 0.05
     r = int(round(W * r / 2))
     N = 4 if force_cuboid else None
     xs_ = find_N_peaks(y_cor_, r=r, min_v=min_v, N=N)[0]
 
-    # Init floor/ceil plane
-    z0 = 50
-    _, z1 = post_proc.np_refine_by_fix_z(*y_bon_, z0)
-
-    # Generate cuboid wall-wall
-    cor, _ = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=force_cuboid)
+    # Generate wall-walls
+    cor, xy_cor = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=force_cuboid)
+    if not force_cuboid:
+        # Check valid (for fear self-intersection)
+        xy2d = np.zeros((len(xy_cor), 2), np.float32)
+        for i in range(len(xy_cor)):
+            xy2d[i, xy_cor[i]['type']] = xy_cor[i]['val']
+            xy2d[i, xy_cor[i-1]['type']] = xy_cor[i-1]['val']
+        if not Polygon(xy2d).is_valid:
+            print(
+                'Fail to generate valid general layout!! '
+                'Generate cuboid as fallback.',
+                file=sys.stderr)
+            xs_ = find_N_peaks(y_cor_, r=r, min_v=0, N=4)[0]
+            cor, xy_cor = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=True)
 
     # Expand with btn coory
     cor = np.hstack([cor, post_proc.infer_coory(cor[:, 1], z1 - z0, z0)[:, None]])
