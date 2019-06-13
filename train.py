@@ -45,8 +45,8 @@ if __name__ == '__main__':
     parser.add_argument('--backbone', default='resnet50',
                         choices=['resnet18', 'resnet50', 'resnet101'],
                         help='backbone of the network')
-    parser.add_argument('--use_rnn', action='store_true',
-                        help='whether to use rnn or not')
+    parser.add_argument('--no_rnn', action='store_true',
+                        help='whether to remove rnn or not')
     # Dataset related arguments
     parser.add_argument('--train_root_dir', default='data/train',
                         help='root directory to training dataset. '
@@ -125,10 +125,10 @@ if __name__ == '__main__':
     # Create model
     if args.pth is not None:
         print('Finetune model is given.')
-        print('Ignore --backbone and --use_rnn')
+        print('Ignore --backbone and --no_rnn')
         net = load_trained_model(HorizonNet, args.pth).to(device)
     else:
-        net = HorizonNet(args.backbone, args.use_rnn).to(device)
+        net = HorizonNet(args.backbone, not args.no_rnn).to(device)
 
     # Create optimizer
     if args.optim == 'SGD':
