@@ -186,6 +186,8 @@ if __name__ == '__main__':
                         help='Skip rendering floor')
     parser.add_argument('--ignore_ceiling', action='store_true',
                         help='Skip rendering ceiling')
+    parser.add_argument('--ignore_wireframe', action='store_true',
+                        help='Skip rendering wireframe')
     args = parser.parse_args()
 
     # Reading source (texture img, cor_id txt)
@@ -206,6 +208,20 @@ if __name__ == '__main__':
     c = np.sqrt((floor_xy**2).sum(1))
     v = np_coory2v(cor_id[0::2, 1], H)
     ceil_z = (c * np.tan(v)).mean()
+
+    # Prepare
+    if not args.ignore_wireframe:
+        assert N == len(floor_xy)
+        wf_points = [[x, y, floor_z] for x, y in floor_xy] +\
+                    [[x, y, ceil_z] for x, y in floor_xy]
+        wf_lines = [[i, (i+1)%N] for i in range(N)] +\
+                   [[i+N, (i+1)%N+N] for i in range(N)] +\
+                   [[i, i+N] for i in range(N)]
+        wf_colors = [[1, 0, 0] for i in range(len(wf_lines))]
+        wf_line_set = open3d.geometry.LineSet()
+        wf_line_set.points = open3d.utility.Vector3dVector(wf_points)
+        wf_line_set.lines = open3d.utility.Vector2iVector(wf_lines)
+        wf_line_set.colors = open3d.utility.Vector3dVector(wf_colors)
 
     # Warp each wall
     all_rgb, all_xyz = warp_walls(equirect_texture, floor_xy, floor_z, ceil_z, args.ppm)
@@ -237,4 +253,9 @@ if __name__ == '__main__':
     pcd = open3d.PointCloud()
     pcd.points = open3d.Vector3dVector(all_xyz)
     pcd.colors = open3d.Vector3dVector(all_rgb)
-    open3d.draw_geometries([pcd])
+
+    # Visualize result
+    tobe_visualize = [pcd]
+    if not args.ignore_wireframe:
+        tobe_visualize.append(wf_line_set)
+    open3d.visualization.draw_geometries(tobe_visualize)
