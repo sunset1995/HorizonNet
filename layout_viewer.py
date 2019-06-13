@@ -10,6 +10,7 @@ from misc.panostretch import pano_connect_points
 
 
 def xyz_2_coorxy(xs, ys, zs, H, W):
+    ''' Mapping 3D xyz coordinates to equirect coordinate '''
     us = np.arctan2(xs, -ys)
     vs = -np.arctan(zs / np.sqrt(xs**2 + ys**2))
     coorx = (us / (2 * np.pi) + 0.5) * W
@@ -18,6 +19,10 @@ def xyz_2_coorxy(xs, ys, zs, H, W):
 
 
 def create_ceiling_floor_mask(cor_id, H, W):
+    '''
+    Binary masking on equirectangular
+    where 1 indicate floor or ceiling
+    '''
     # Prepare 1d ceiling-wall/floor-wall boundary
     c_pts = []
     f_pts = []
@@ -41,7 +46,7 @@ def create_ceiling_floor_mask(cor_id, H, W):
     f_pts = np.array(f_pts)
     f_pts = f_pts[np.argsort(f_pts[:, 0] * H + f_pts[:, 1])]
 
-    # # Removed duplicated point
+    # Removed duplicated point
     c_pts = np.concatenate([c_pts[:1], c_pts[1:][np.diff(c_pts[:, 0]) > 0]], 0)
     f_pts = np.concatenate([f_pts[:1], f_pts[1:][np.diff(f_pts[:, 0]) > 0]], 0)
 
@@ -60,9 +65,10 @@ def create_ceiling_floor_mask(cor_id, H, W):
     return mask
 
 
-def warp_walls(equirect_texture, xy, floor_z, ceil_z, ppm, alpha):
+def warp_walls(equirect_texture, xy, floor_z, ceil_z, ppm):
+    ''' Generate all walls' xyzrgba '''
     H, W = equirect_texture.shape[:2]
-    all_rgba = []
+    all_rgb = []
     all_xyz = []
     for i in trange(len(xy), desc='Processing walls'):
         next_i = (i + 1) % len(xy)
@@ -80,18 +86,18 @@ def warp_walls(equirect_texture, xy, floor_z, ceil_z, ppm, alpha):
             map_coordinates(equirect_texture[..., 0], [coory, coorx], order=1, mode='wrap'),
             map_coordinates(equirect_texture[..., 1], [coory, coorx], order=1, mode='wrap'),
             map_coordinates(equirect_texture[..., 2], [coory, coorx], order=1, mode='wrap'),
-            np.zeros([t_h, t_w]) + alpha,
         ], -1)
         plane_xyz = np.stack([xs, ys, zs], axis=-1)
 
-        all_rgba.extend(plane_texture.reshape(-1, 4))
+        all_rgb.extend(plane_texture.reshape(-1, 3))
         all_xyz.extend(plane_xyz.reshape(-1, 3))
 
-    return all_rgba, all_xyz
+    return all_rgb, all_xyz
 
 
-def warp_floor_ceiling(equirect_texture, mask, xy, z_floor, z_ceiling, ppm, alpha, n_thread):
-    assert equirect_texture.shape[:2] == mask.shape[:2]
+def warp_floor_ceiling(equirect_texture, ceil_floor_mask, xy, z_floor, z_ceiling, ppm):
+    ''' Generate floor's and ceiling's xyzrgba '''
+    assert equirect_texture.shape[:2] == ceil_floor_mask.shape[:2]
     H, W = equirect_texture.shape[:2]
     min_x = xy[:, 0].min()
     max_x = xy[:, 0].max()
@@ -111,18 +117,16 @@ def warp_floor_ceiling(equirect_texture, mask, xy, z_floor, z_ceiling, ppm, alph
         map_coordinates(equirect_texture[..., 0], [coory_floor, coorx_floor], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 1], [coory_floor, coorx_floor], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 2], [coory_floor, coorx_floor], order=1, mode='wrap'),
-        np.zeros([t_h, t_w]) + alpha,
     ], -1)
-    floor_mask = map_coordinates(mask, [coory_floor, coorx_floor], order=0)
+    floor_mask = map_coordinates(ceil_floor_mask, [coory_floor, coorx_floor], order=0)
     floor_xyz = np.stack([xs, ys, zs_floor], axis=-1)
 
     ceil_texture = np.stack([
         map_coordinates(equirect_texture[..., 0], [coory_ceil, coorx_ceil], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 1], [coory_ceil, coorx_ceil], order=1, mode='wrap'),
         map_coordinates(equirect_texture[..., 2], [coory_ceil, coorx_ceil], order=1, mode='wrap'),
-        np.zeros([t_h, t_w]) + alpha,
     ], -1)
-    ceil_mask = map_coordinates(mask, [coory_ceil, coorx_ceil], order=0)
+    ceil_mask = map_coordinates(ceil_floor_mask, [coory_ceil, coorx_ceil], order=0)
     ceil_xyz = np.stack([xs, ys, zs_ceil], axis=-1)
 
     floor_texture = floor_texture[floor_mask]
@@ -131,6 +135,37 @@ def warp_floor_ceiling(equirect_texture, mask, xy, z_floor, z_ceiling, ppm, alph
     ceil_xyz = ceil_xyz[ceil_mask]
 
     return floor_texture, floor_xyz, ceil_texture, ceil_xyz
+
+
+def create_occlusion_mask(xyz):
+    xs, ys, zs = xyz.T
+    ds = np.sqrt(xs**2 + ys**2 + zs**2)
+
+    # Reorder by depth (from far to close)
+    idx = np.argsort(-ds)
+    xs, ys, zs, ds = xs[idx], ys[idx], zs[idx], ds[idx]
+
+    # Compute coresponding quirect coordinate
+    coorx, coory = xyz_2_coorxy(xs, ys, zs, H=256, W=512)
+    quan_coorx = np.round(coorx).astype(int) % W
+    quan_coory = np.round(coory).astype(int) % H
+
+    # Generate layout depth
+    depth_map = np.zeros((H, W), np.float32) + 1e9
+    depth_map[quan_coory, quan_coorx] = ds
+    tol_map = np.max([
+        np.abs(np.diff(depth_map, axis=0, append=depth_map[[-2]])),
+        np.abs(np.diff(depth_map, axis=1, append=depth_map[:, [0]])),
+        np.abs(np.diff(depth_map, axis=1, prepend=depth_map[:, [-1]])),
+    ], 0)
+
+    # filter_ds = map_coordinates(depth_map, [coory, coorx], order=1, mode='wrap')
+    # tol_ds = map_coordinates(tol_map, [coory, coorx], order=1, mode='wrap')
+    filter_ds = depth_map[quan_coory, quan_coorx]
+    tol_ds = tol_map[quan_coory, quan_coorx]
+    mask = ds > (filter_ds + 2 * tol_ds)
+
+    return mask, idx
 
 
 if __name__ == '__main__':
@@ -147,10 +182,6 @@ if __name__ == '__main__':
                         help='Points per meter')
     parser.add_argument('--point_size', default=0.0025, type=int,
                         help='Point size')
-    parser.add_argument('--alpha', default=1.0, type=float,
-                        help='Opacity of the texture')
-    parser.add_argument('--threads', default=10, type=int,
-                        help='Number of threads to use')
     parser.add_argument('--ignore_floor', action='store_true',
                         help='Skip rendering floor')
     parser.add_argument('--ignore_ceiling', action='store_true',
@@ -166,7 +197,7 @@ if __name__ == '__main__':
     cor_id[:, 0] *= W
     cor_id[:, 1] *= H
 
-    mask = create_ceiling_floor_mask(cor_id, H, W)
+    ceil_floor_mask = create_ceiling_floor_mask(cor_id, H, W)
 
     # Convert cor_id to 3d xyz
     N = len(cor_id) // 2
@@ -177,28 +208,32 @@ if __name__ == '__main__':
     ceil_z = (c * np.tan(v)).mean()
 
     # Warp each wall
-    all_rgba, all_xyz = warp_walls(equirect_texture, floor_xy, floor_z, ceil_z, args.ppm, args.alpha)
+    all_rgb, all_xyz = warp_walls(equirect_texture, floor_xy, floor_z, ceil_z, args.ppm)
 
     # Warp floor and ceiling
     if not args.ignore_floor or not args.ignore_ceiling:
-        fi, fp, ci, cp = warp_floor_ceiling(equirect_texture, mask,
+        fi, fp, ci, cp = warp_floor_ceiling(equirect_texture, ceil_floor_mask,
                                             floor_xy, floor_z, ceil_z,
-                                            ppm=args.ppm,
-                                            alpha=args.alpha,
-                                            n_thread=args.threads)
+                                            ppm=args.ppm)
 
         if not args.ignore_floor:
-            all_rgba.extend(fi)
+            all_rgb.extend(fi)
             all_xyz.extend(fp)
 
         if not args.ignore_ceiling:
-            all_rgba.extend(ci)
+            all_rgb.extend(ci)
             all_xyz.extend(cp)
 
-    # Launch point cloud viewer
-    print('Showing %d of points...' % len(all_rgba))
     all_xyz = np.array(all_xyz)
-    all_rgb = np.array(all_rgba)[:, :3]
+    all_rgb = np.array(all_rgb)
+
+    # Filter occluded points
+    occlusion_mask, reord_idx = create_occlusion_mask(all_xyz)
+    all_xyz = all_xyz[reord_idx][~occlusion_mask]
+    all_rgb = all_rgb[reord_idx][~occlusion_mask]
+
+    # Launch point cloud viewer
+    print('Showing %d of points...' % len(all_rgb))
     pcd = open3d.PointCloud()
     pcd.points = open3d.Vector3dVector(all_xyz)
     pcd.colors = open3d.Vector3dVector(all_rgb)
