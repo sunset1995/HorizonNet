@@ -175,7 +175,7 @@ See `eval_general.py`, arguments are the same as `eval_cuboid.py`.
 
 
 ## TODO
-- Faster pre-processing script (pose correction) (maybe cython implementation or [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
+- Faster pre-processing script (top-fron alignment) (maybe cython implementation or [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas))
 
 
 ## Acknowledgement
