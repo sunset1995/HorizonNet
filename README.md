@@ -169,14 +169,13 @@ The quantitative result for the pretrained model is shown below:
 
 
 ## Quantitative Evaluation - Genral Layout
-See `eval_general.py`. Detail description is WIP.
+**Note:** run `inference.py` with `--relax_cuboid` for general layout.
+
+See `eval_general.py`, arguments are the same as `eval_cuboid.py`.
 
 
 ## TODO
-- Merge parallel wall with short distance in post-processing
-- Show more results
 - Faster pre-processing script (pose correction) (maybe cython implementation or [fernandez2018layouts](https://github.com/cfernandezlab/Lines-and-Vanishing-Points-directly-on-Panoramas)?)
-- Showing general layout cross-validation
 
 
 ## Acknowledgement
