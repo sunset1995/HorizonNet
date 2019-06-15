@@ -3,8 +3,10 @@
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/horizonnet-learning-room-layout-with-1d/3d-room-layouts-from-a-single-rgb-panorama)](https://paperswithcode.com/sota/3d-room-layouts-from-a-single-rgb-panorama?p=horizonnet-learning-room-layout-with-1d)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/horizonnet-learning-room-layout-with-1d/3d-room-layouts-from-a-single-rgb-panorama-1)](https://paperswithcode.com/sota/3d-room-layouts-from-a-single-rgb-panorama-1?p=horizonnet-learning-room-layout-with-1d)
 
-This is the implementation of our CVPR'19 [
-HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation.](https://arxiv.org/abs/1901.03861) ([project page](https://sunset1995.github.io/HorizonNet/))
+This is the implementation of our CVPR'19 "[
+HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
+
+**News, June 15** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)
 
 ![](assets/teaser.jpg)
 
