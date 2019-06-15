@@ -8,13 +8,14 @@ html, body {
     margin: 0;
     background-color: rgb(236, 236, 236);
     color: #333;
+    box-shadow: 0 0 100px #aaa inset;
 }
 
 #teaser {
     background-color: #333;
     color: #eee;
     padding: 4em;
-    box-shadow: 0 0 500px #111 inset;
+    box-shadow: 0 0 50px #222 inset;
 }
 
 section[role=teaser-img] {
@@ -129,8 +130,17 @@ section[role=authors] {
 section[role=affiliation] {
     display: block;
     text-align: center;
-    padding: 2em;
+    padding-top: 1.5em;
+    padding-bottom: 2em;
     background: transparent;
+}
+section[role=affiliation] > div[role=sub] {
+    margin-top: .8em;
+    font-size: 14px;
+    opacity: .8;
+}
+section[role=affiliation] a {
+    margin: 0;
 }
 
 div[role="my-head-container"] {

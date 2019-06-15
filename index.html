@@ -13,14 +13,14 @@
     <meta property="og:url" content="https://sunset1995.github.io/HorizonNet/">
     <meta property="og:site_name" content="Cheng Sun">
     <meta property="og:image" content="https://sunset1995.github.io/HorizonNet/imgs/overview.png">
-    
+
     <link rel="icon" href="./favicon.ico">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400|Roboto+Condensed">
     <link rel="stylesheet" href="./font-awesome-4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    
+
     <div id="teaser">
         <h1>HorizonNet</h1>
         <h2>Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation</h2>
@@ -37,9 +37,13 @@
 
         <section role="affiliation">
             <div><a href="http://cvpr2019.thecvf.com/">IEEE Conference on Computer Vision and Pattern Recognition 2019 (CVPR 2019)</a></div>
+            <div role="sub">
+                <div>Invited spotlight presentation at <a href="https://3dscenegen.github.io/">3D Scene Generation Workshop</a></div>
+                <div>Invited student presentation at <a href="http://aliensunmin.github.io/aii_workshop/3rd/">Augmented Intelligence and Interaction (AII) Workshop</a></div>
+            </div>
         </section>
     </div>
-    
+
     <main>
 
         <h3>Abstract</h3>
@@ -47,13 +51,13 @@
             <img src="imgs/overview.png" >
         </section>
         <p>We present a new approach to the problem of estimating 3D room layout from a single panoramic image. We represent room layout as three 1D vectors that encode, at each image column, the boundary positions of floor-wall and ceiling-wall, and the existence of wall-wall boundary. The proposed network architecture, HorizonNet, trained for predicting 1D layout, outperforms previous state-of-the-art approaches. The designed post-processing procedure for recovering 3D room layouts from 1D predictions can automatically infer the room shape with low computation cost---it takes less than 20ms for a panorama image while prior works might need dozens of seconds. We also propose Pano Stretch Data Augmentation, which can diversify panorama data and be applied to other panorama-related learning tasks. Due to the limited training data available for non-cuboid layout, we re-annotate 65 general layout data from the current dataset for fine-tuning and qualitatively show the ability of our approach to estimate general layouts.</p>
-        
+
         <h3>Links</h3>
         <p><a href="https://arxiv.org/abs/1901.03861">
             <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
             [Paper]
         </a></p>
-        
+
         <p><a href="https://github.com/sunset1995/HorizonNet">
             <i class="fa fa-github" aria-hidden="true"></i>
             [Codes]
@@ -104,6 +108,6 @@
   year={2019}
 }</pre>
     </main>
-    
+
 </body>
 </html>
