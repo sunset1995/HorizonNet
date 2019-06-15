@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from PIL import Image
+from shapely.geometry import LineString
 from scipy.spatial.distance import cdist
 
 import torch
@@ -62,9 +63,7 @@ class PanoCorBonDataset(data.Dataset):
             cor = np.roll(cor[:, :2], -2 * np.argmin(cor[::2, 0]), 0)
 
             # Detect occlusion
-            x_loc = cor[::2, 0]
-            x_loc = [*x_loc] + [x_loc[0] + W]
-            occlusion = (np.diff(x_loc) < 0).repeat(2)
+            occlusion = find_occlusion(cor[::2].copy()).repeat(2)
             assert (cor[0::2, 0] != cor[1::2, 0]).sum() == 0
             assert (cor[0::2, 1] > cor[1::2, 1]).sum() == 0
 
@@ -150,6 +149,23 @@ class PanoCorBonDataset(data.Dataset):
             out_lst.append(img_path)
 
         return out_lst
+
+
+def find_occlusion(coor):
+    u = panostretch.coorx2u(coor[:, 0])
+    v = panostretch.coory2v(coor[:, 1])
+    x, y = panostretch.uv2xy(u, v, z=-50)
+    occlusion = []
+    for i in range(len(x)):
+        raycast = LineString([(0, 0), (x[i], y[i])])
+        other_layout = []
+        for j in range(i+1, len(x)):
+            other_layout.append((x[j], y[j]))
+        for j in range(0, i):
+            other_layout.append((x[j], y[j]))
+        other_layout = LineString(other_layout)
+        occlusion.append(raycast.intersects(other_layout))
+    return np.array(occlusion)
 
 
 def cor2xybound(cor):
