@@ -83,22 +83,26 @@ class PanoCorBonDataset(data.Dataset):
             img, cor = panostretch.pano_stretch(img, cor, kx, ky)
 
         # Prepare 1d ceiling-wall/floor-wall boundary
-        bon = np.zeros((2, W))
-        bon[0, :] = 1e9
-        bon[1, :] = -1e9
+        bon_ceil_x, bon_ceil_y = [], []
+        bon_floor_x, bon_floor_y = [], []
         n_cor = len(cor)
         for i in range(n_cor // 2):
             xys = panostretch.pano_connect_points(cor[i*2],
                                                   cor[(i*2+2) % n_cor],
                                                   z=-50)
-            xys = xys.astype(int)
-            bon[0, xys[:, 0]] = np.minimum(bon[0, xys[:, 0]], xys[:, 1])
+            bon_ceil_x.extend(xys[:, 0])
+            bon_ceil_y.extend(xys[:, 1])
         for i in range(n_cor // 2):
             xys = panostretch.pano_connect_points(cor[i*2+1],
                                                   cor[(i*2+3) % n_cor],
                                                   z=50)
-            xys = xys.astype(int)
-            bon[1, xys[:, 0]] = np.maximum(bon[1, xys[:, 0]], xys[:, 1])
+            bon_floor_x.extend(xys[:, 0])
+            bon_floor_y.extend(xys[:, 1])
+        bon_ceil_x, bon_ceil_y = sort_xy_filter_unique(bon_ceil_x, bon_ceil_y)
+        bon_floor_x, bon_floor_y = sort_xy_filter_unique(bon_floor_x, bon_floor_y)
+        bon = np.zeros((2, W))
+        bon[0] = np.interp(np.arange(W), bon_ceil_x, bon_ceil_y, period=W)
+        bon[1] = np.interp(np.arange(W), bon_floor_x, bon_floor_y, period=W)
         bon = ((bon + 0.5) / img.shape[0] - 0.5) * np.pi
 
         # Random flip
@@ -149,6 +153,16 @@ class PanoCorBonDataset(data.Dataset):
             out_lst.append(img_path)
 
         return out_lst
+
+
+def sort_xy_filter_unique(xs, ys):
+    xs, ys = np.array(xs), np.array(ys)
+    idx_sort = np.argsort(xs)
+    xs, ys = xs[idx_sort], ys[idx_sort]
+    _, idx_unique = np.unique(xs, return_index=True)
+    xs, ys = xs[idx_unique], ys[idx_unique]
+    assert np.all(np.diff(xs) > 0)
+    return xs, ys
 
 
 def find_occlusion(coor):
