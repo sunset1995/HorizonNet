@@ -90,11 +90,14 @@ main a {
 
 pre {
     font-family: monospace;
+    overflow: scroll;
 }
 
 iframe {
     display: block;
     margin: 1em auto 2em auto;
+    width: 100%;
+    height: auto;
 }
 
 footer {
