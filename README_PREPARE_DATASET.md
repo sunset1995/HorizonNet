@@ -1,7 +1,7 @@
 # How to prepare your dataset?
 
 **TLDR;**
-- Images in `your_dataset/img/*.png` and ground truth in `your_dataset/label_cor/*.txt`
+- Aligned images in `your_dataset/img/*.png` and ground truth in `your_dataset/label_cor/*.txt`
 - Image in `1024 x 512` resolution
 - Ground truth format:
     ```
@@ -29,8 +29,10 @@ your_dataset/
 ```
 
 Please also note that:
+- Your imaages should be aligned. If not, run `python preprocess.py --img_glob "your_dataset/rawimg/*png" --output_dir your_dataset/img --rgbonly`.
 - All prefix names between images and grond truth should match. I.e if there is a `ASDF.png` in `your_dataset/img/` directory, there should be a `ASDF.txt` in `your_dataset/label_cor/`.
 - All images have to be in the resolution of `1024 width x 512 height` for current implementation.
+- Check your dataset is proper and ready for training by `python dataset.py --root_dir your_dataset/ --ith -1 --out_dir your_dataset/visualize`. Please check the ground truth visualization in `your_dataset/visualize` to make sure all thing go right.
 
 ### More notes about ground truth
 - Each line of the txt is a corners in image coordinate (top-left is origin)

@@ -21,7 +21,10 @@ class PanoCorBonDataset(data.Dataset):
                  normcor=False, return_cor=False, return_path=False):
         self.img_dir = os.path.join(root_dir, 'img')
         self.cor_dir = os.path.join(root_dir, 'label_cor')
-        self.img_fnames = sorted([fname for fname in os.listdir(self.img_dir)])
+        self.img_fnames = sorted([
+            fname for fname in os.listdir(self.img_dir)
+            if fname.endswith('.jpg') or fname.endswith('.png')
+        ])
         self.txt_fnames = ['%s.txt' % fname[:-4] for fname in self.img_fnames]
         self.flip = flip
         self.rotate = rotate
@@ -36,10 +39,6 @@ class PanoCorBonDataset(data.Dataset):
         self._check_dataset()
 
     def _check_dataset(self):
-        for fname in self.img_fnames:
-            assert fname.endswith('.jpg') or fname.endswith('.png'),\
-                'All filenames under img_dir should endswith .jpg or .png'
-
         for fname in self.txt_fnames:
             assert os.path.isfile(os.path.join(self.cor_dir, fname)),\
                 '%s not found' % os.path.join(self.cor_dir, fname)
@@ -57,7 +56,7 @@ class PanoCorBonDataset(data.Dataset):
         # Read ground truth corners
         with open(os.path.join(self.cor_dir,
                                self.txt_fnames[idx])) as f:
-            cor = np.array([line.strip().split() for line in f], np.float32)
+            cor = np.array([line.strip().split() for line in f if line.strip()], np.float32)
 
             # Corner with minimum x should at the beginning
             cor = np.roll(cor[:, :2], -2 * np.argmin(cor[::2, 0]), 0)
