@@ -254,6 +254,9 @@ if __name__ == '__main__':
     pcd.points = open3d.Vector3dVector(all_xyz)
     pcd.colors = open3d.Vector3dVector(all_rgb)
 
+    #Saving pointcloud to disk as a .ply 
+    open3d.io.write_point_cloud("./assets/saved/savedPCD.ply", pcd)
+
     # Visualize result
     tobe_visualize = [pcd]
     if not args.ignore_wireframe:
