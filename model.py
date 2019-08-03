@@ -3,21 +3,25 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.model_zoo as model_zoo
+import torchvision.models as models
 
 
-model_urls = {
-    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
-    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
-}
+ENCODER_RESNET = [
+    'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152',
+    'resnext50_32x4d', 'resnext101_32x8d'
+]
+ENCODER_DENSENET = [
+    'densenet121', 'densenet169', 'densenet161', 'densenet201'
+]
 
 
 def lr_pad(x, padding=1):
+    ''' Pad left/right-most to each other instead of zero padding '''
     return torch.cat([x[..., -padding:], x, x[..., :padding]], dim=3)
 
 
 class LR_PAD(nn.Module):
+    ''' Pad left/right-most to each other instead of zero padding '''
     def __init__(self, padding=1):
         super(LR_PAD, self).__init__()
         self.padding = padding
@@ -26,185 +30,93 @@ class LR_PAD(nn.Module):
         return lr_pad(x, self.padding)
 
 
-def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=(1, 0), bias=False)
-
-
-class BasicBlock(nn.Module):
-    expansion = 1
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.downsample = downsample
-        self.stride = stride
+'''
+Encoder
+'''
+class Resnet(nn.Module):
+    def __init__(self, backbone='resnet50', pretrained=True):
+        super(Resnet, self).__init__()
+        assert backbone in ENCODER_RESNET
+        self.encoder = getattr(models, backbone)(pretrained=pretrained)
+        del self.encoder.fc, self.encoder.avgpool
 
     def forward(self, x):
-        residual = x
+        features = []
+        x = self.encoder.conv1(x)
+        x = self.encoder.bn1(x)
+        x = self.encoder.relu(x)
+        x = self.encoder.maxpool(x)
 
-        out = self.conv1(lr_pad(x, 1))
-        out = self.bn1(out)
-        out = self.relu(out)
+        x = self.encoder.layer1(x);  features.append(x)  # 1/4
+        x = self.encoder.layer2(x);  features.append(x)  # 1/8
+        x = self.encoder.layer3(x);  features.append(x)  # 1/16
+        x = self.encoder.layer4(x);  features.append(x)  # 1/32
+        return features
 
-        out = self.conv2(lr_pad(out, 1))
-        out = self.bn2(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        out = self.relu(out)
-
-        return out
+    def list_blocks(self):
+        lst = [m for m in self.encoder.children()]
+        block0 = lst[:4]
+        block1 = lst[4:5]
+        block2 = lst[5:6]
+        block3 = lst[6:7]
+        block4 = lst[7:8]
+        return block0, block1, block2, block3, block4
 
 
-class Bottleneck(nn.Module):
-    expansion = 4
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
-                               padding=(1, 0), bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, planes * self.expansion, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.relu = nn.ReLU(inplace=True)
-        self.downsample = downsample
-        self.stride = stride
+class Densenet(nn.Module):
+    def __init__(self, backbone='densenet169', pretrained=True):
+        super(Densenet, self).__init__()
+        assert backbone in ENCODER_DENSENET
+        self.encoder = getattr(models, backbone)(pretrained=pretrained)
+        self.final_relu = nn.ReLU(inplace=True)
+        del self.encoder.classifier
 
     def forward(self, x):
-        residual = x
+        lst = []
+        for m in self.encoder.features.children():
+            x = m(x)
+            lst.append(x)
+        features = [lst[4], lst[6], lst[8], self.final_relu(lst[11])]
+        return features
 
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(lr_pad(out))
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        out = self.relu(out)
-
-        return out
+    def list_blocks(self):
+        lst = [m for m in self.encoder.features.children()]
+        block0 = lst[:4]
+        block1 = lst[4:6]
+        block2 = lst[6:8]
+        block3 = lst[8:10]
+        block4 = lst[10:]
+        return block0, block1, block2, block3, block4
 
 
-class ResNet(nn.Module):
-
-    def __init__(self, block, layers):
-        self.inplanes = 64
-        super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=(3, 0),
-                               bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-
-    def _make_layer(self, block, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion),
-            )
-
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
-
-        return nn.Sequential(*layers)
-
-    def freeze_bn(self):
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.eval()
-                m.weight.requires_grad = False
-                m.bias.requires_grad = False
+'''
+Decoder
+'''
+class ConvCompressH(nn.Module):
+    ''' Reduce feature height by factor of two '''
+    def __init__(self, in_c, out_c, ks=3):
+        super(ConvCompressH, self).__init__()
+        assert ks % 2 == 1
+        padding = ks // 2
+        self.layers = nn.Sequential(
+            LR_PAD(padding),
+            nn.Conv2d(in_c, out_c, kernel_size=ks, stride=(2, 1), padding=(padding, 0)),
+            nn.BatchNorm2d(out_c),
+            nn.ReLU(inplace=True),
+        )
 
     def forward(self, x):
-        conv_list = []
-        x = self.conv1(lr_pad(x, 3))
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-
-        x = self.layer1(x); conv_list.append(x)
-        x = self.layer2(x); conv_list.append(x)
-        x = self.layer3(x); conv_list.append(x)
-        x = self.layer4(x); conv_list.append(x)
-
-        return conv_list
-
-
-def resnet18(pretrained=True, **kwargs):
-    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet18']), strict=False)
-    return model
-
-
-def resnet50(pretrained=True, **kwargs):
-    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), strict=False)
-    return model
-
-
-def resnet101(pretrained=False, **kwargs):
-    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet101']), strict=False)
-    return model
+        return self.layers(x)
 
 
 class GlobalHeightConv(nn.Module):
     def __init__(self, in_c, out_c):
         super(GlobalHeightConv, self).__init__()
         self.layer = nn.Sequential(
-            LR_PAD(),
-            nn.Conv2d(in_c, in_c//2, kernel_size=3, stride=(2, 1), padding=(1, 0)),
-            nn.BatchNorm2d(in_c//2),
-            nn.ReLU(inplace=True),
-            LR_PAD(),
-            nn.Conv2d(in_c//2, in_c//2, kernel_size=3, stride=(2, 1), padding=(1, 0)),
-            nn.BatchNorm2d(in_c//2),
-            nn.ReLU(inplace=True),
-            LR_PAD(),
-            nn.Conv2d(in_c//2, in_c//4, kernel_size=3, stride=(2, 1), padding=(1, 0)),
-            nn.BatchNorm2d(in_c//4),
-            nn.ReLU(inplace=True),
-            LR_PAD(),
-            nn.Conv2d(in_c//4, out_c, kernel_size=3, stride=(2, 1), padding=(1, 0)),
-            nn.BatchNorm2d(out_c),
-            nn.ReLU(inplace=True),
+            ConvCompressH(in_c, in_c//2),
+            ConvCompressH(in_c//2, in_c//2),
+            ConvCompressH(in_c//2, in_c//4),
+            ConvCompressH(in_c//4, out_c),
         )
 
     def forward(self, x, out_w):
@@ -218,6 +130,32 @@ class GlobalHeightConv(nn.Module):
         return x
 
 
+class GlobalHeightStage(nn.Module):
+    def __init__(self, c1, c2, c3, c4, out_scale=8):
+        ''' Process 4 blocks from encoder to single multiscale features '''
+        super(GlobalHeightStage, self).__init__()
+        self.cs = c1, c2, c3, c4
+        self.out_scale = out_scale
+        self.ghc_lst = nn.ModuleList([
+            GlobalHeightConv(c1, c1//out_scale),
+            GlobalHeightConv(c2, c2//out_scale),
+            GlobalHeightConv(c3, c3//out_scale),
+            GlobalHeightConv(c4, c4//out_scale),
+        ])
+
+    def forward(self, conv_list, out_w):
+        assert len(conv_list) == 4
+        bs = conv_list[0].shape[0]
+        feature = torch.cat([
+            f(x, out_w).reshape(bs, -1, out_w)
+            for f, x, out_c in zip(self.ghc_lst, conv_list, self.cs)
+        ], dim=1)
+        return feature
+
+
+'''
+HorizonNet
+'''
 class HorizonNet(nn.Module):
     x_mean = torch.FloatTensor(np.array([0.485, 0.456, 0.406])[None, :, None, None])
     x_std = torch.FloatTensor(np.array([0.229, 0.224, 0.225])[None, :, None, None])
@@ -226,29 +164,30 @@ class HorizonNet(nn.Module):
         super(HorizonNet, self).__init__()
         self.backbone = backbone
         self.use_rnn = use_rnn
-        if backbone == 'resnet18':
-            self.feature_extractor = resnet18()
-            _exp = 1
-        elif backbone == 'resnet50':
-            self.feature_extractor = resnet50()
-            _exp = 4
-        elif backbone == 'resnet101':
-            self.feature_extractor = resnet101()
-            _exp = 4
+        self.out_scale = 8
+        self.step_cols = 4
+        self.rnn_hidden_size = 512
+
+        # Encoder
+        if backbone.startswith('res'):
+            self.feature_extractor = Resnet(backbone, pretrained=True)
+        elif backbone.startswith('dense'):
+            self.feature_extractor = Densenet(backbone, pretrained=True)
         else:
             raise NotImplementedError()
 
-        _out_scale = 8
-        self.stage1 = nn.ModuleList([
-            GlobalHeightConv(64 * _exp, int(64 * _exp / _out_scale)),
-            GlobalHeightConv(128 * _exp, int(128 * _exp / _out_scale)),
-            GlobalHeightConv(256 * _exp, int(256 * _exp / _out_scale)),
-            GlobalHeightConv(512 * _exp, int(512 * _exp / _out_scale)),
-        ])
-        self.step_cols = 4
-        self.rnn_hidden_size = 512
+        # Inference channels number from each block of the encoder
+        with torch.no_grad():
+            dummy = torch.zeros(1, 3, 512, 1024)
+            c1, c2, c3, c4 = [b.shape[1] for b in self.feature_extractor(dummy)]
+            c_last = (c1*8 + c2*4 + c3*2 + c4*1) // self.out_scale
+
+        # Convert features from 4 blocks of the encoder into B x C x 1 x W'
+        self.reduce_height_module = GlobalHeightStage(c1, c2, c3, c4, self.out_scale)
+
+        # 1D prediction
         if self.use_rnn:
-            self.bi_rnn = nn.LSTM(input_size=_exp * 256,
+            self.bi_rnn = nn.LSTM(input_size=c_last,
                                   hidden_size=self.rnn_hidden_size,
                                   num_layers=2,
                                   dropout=0.5,
@@ -262,7 +201,7 @@ class HorizonNet(nn.Module):
             self.linear.bias.data[8::12].fill_(0.425)
         else:
             self.linear = nn.Sequential(
-                nn.Linear(_exp * 256, self.rnn_hidden_size),
+                nn.Linear(c_last, self.rnn_hidden_size),
                 nn.ReLU(inplace=True),
                 nn.Dropout(0.5),
                 nn.Linear(self.rnn_hidden_size, 3 * self.step_cols),
@@ -273,11 +212,6 @@ class HorizonNet(nn.Module):
         self.x_mean.requires_grad = False
         self.x_std.requires_grad = False
 
-    def freeze_bn(self):
-        for m in self.feature_extractor.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.eval()
-
     def _prepare_x(self, x):
         if self.x_mean.device != x.device:
             self.x_mean = self.x_mean.to(x.device)
@@ -285,16 +219,11 @@ class HorizonNet(nn.Module):
         return (x[:, :3] - self.x_mean) / self.x_std
 
     def forward(self, x):
+        if x.shape[2] != 512 or x.shape[3] != 1024:
+            raise NotImplementedError()
         x = self._prepare_x(x)
-        iw = x.shape[3]
-        block_w = int(iw / self.step_cols)
         conv_list = self.feature_extractor(x)
-        down_list = []
-        for x, f in zip(conv_list, self.stage1):
-            tmp = f(x, block_w)  # [b, c, h, w]
-            flat = tmp.view(tmp.shape[0], -1, tmp.shape[3])  # [b, c*h, w]
-            down_list.append(flat)
-        feature = torch.cat(down_list, dim=1)  # [b, c*h, w]
+        feature = self.reduce_height_module(conv_list, x.shape[3]//self.step_cols)
 
         # rnn
         if self.use_rnn:
@@ -312,7 +241,8 @@ class HorizonNet(nn.Module):
             output = output.permute(0, 2, 1, 3)  # [b, 3, w, step_cols]
             output = output.contiguous().view(output.shape[0], 3, -1)  # [b, 3, w*step_cols]
 
-        cor = output[:, :1]
-        bon = output[:, 1:]
+        # output.shape => B x 3 x W
+        cor = output[:, :1]  # B x 1 x W
+        bon = output[:, 1:]  # B x 2 x W
 
         return bon, cor

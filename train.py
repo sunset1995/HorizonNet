@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
 
-from model import HorizonNet
+from model import HorizonNet, ENCODER_RESNET, ENCODER_DENSENET
 from dataset import PanoCorBonDataset
 from misc.utils import group_weight, adjust_learning_rate, save_model, load_trained_model
 
@@ -43,7 +43,7 @@ if __name__ == '__main__':
                              '(finetuning)')
     # Model related
     parser.add_argument('--backbone', default='resnet50',
-                        choices=['resnet18', 'resnet50', 'resnet101'],
+                        choices=ENCODER_RESNET + ENCODER_DENSENET,
                         help='backbone of the network')
     parser.add_argument('--no_rnn', action='store_true',
                         help='whether to remove rnn or not')
@@ -85,8 +85,6 @@ if __name__ == '__main__':
                         help='momentum for sgd, beta1 for adam')
     parser.add_argument('--weight_decay', default=0, type=float,
                         help='factor for L2 regularization')
-    parser.add_argument('--freeze_bn', action='store_true',
-                        help='whether to freeze statistic of batchnorm')
     # Misc arguments
     parser.add_argument('--no_cuda', action='store_true',
                         help='disable cuda')
@@ -159,8 +157,6 @@ if __name__ == '__main__':
 
         # Train phase
         net.train()
-        if args.freeze_bn:
-            net.freeze_bn()
         iterator_train = iter(loader_train)
         for _ in trange(len(loader_train),
                         desc='Train ep%s' % ith_epoch, position=1):
