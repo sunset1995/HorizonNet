@@ -30,6 +30,22 @@ class LR_PAD(nn.Module):
         return lr_pad(x, self.padding)
 
 
+def wrap_lr_pad(net):
+    for name, m in net.named_modules():
+        if not isinstance(m, nn.Conv2d):
+            continue
+        if m.padding[1] == 0:
+            continue
+        w_pad = int(m.padding[1])
+        m.padding = (m.padding[0], 0)
+        names = name.split('.')
+        root = functools.reduce(lambda o, i: getattr(o, i), [net] + names[:-1])
+        setattr(
+            root, names[-1],
+            nn.Sequential(LR_PAD(w_pad), m)
+        )
+
+
 '''
 Encoder
 '''
@@ -97,10 +113,8 @@ class ConvCompressH(nn.Module):
     def __init__(self, in_c, out_c, ks=3):
         super(ConvCompressH, self).__init__()
         assert ks % 2 == 1
-        padding = ks // 2
         self.layers = nn.Sequential(
-            LR_PAD(padding),
-            nn.Conv2d(in_c, out_c, kernel_size=ks, stride=(2, 1), padding=(padding, 0)),
+            nn.Conv2d(in_c, out_c, kernel_size=ks, stride=(2, 1), padding=ks//2),
             nn.BatchNorm2d(out_c),
             nn.ReLU(inplace=True),
         )
@@ -211,6 +225,7 @@ class HorizonNet(nn.Module):
             self.linear[-1].bias.data[8::12].fill_(0.425)
         self.x_mean.requires_grad = False
         self.x_std.requires_grad = False
+        wrap_lr_pad(self)
 
     def _prepare_x(self, x):
         if self.x_mean.device != x.device:

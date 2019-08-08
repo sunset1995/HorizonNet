@@ -46,9 +46,9 @@ def adjust_learning_rate(optimizer, args):
         param_group['lr'] = args.running_lr
 
 
-def save_model(net, path, epoch):
+def save_model(net, path, args):
     state_dict = OrderedDict({
-        'epoch': epoch,
+        'args': args.__dict__,
         'kwargs': {
             'backbone': net.backbone,
             'use_rnn': net.use_rnn,

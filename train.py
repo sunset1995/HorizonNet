@@ -65,6 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', default=6, type=int,
                         help='numbers of workers for dataloaders')
     # optimization related arguments
+    parser.add_argument('--freeze_earlier_blocks', default=-1, type=int)
     parser.add_argument('--batch_size_train', default=8, type=int,
                         help='training mini-batch size')
     parser.add_argument('--batch_size_valid', default=2, type=int,
@@ -128,14 +129,24 @@ if __name__ == '__main__':
     else:
         net = HorizonNet(args.backbone, not args.no_rnn).to(device)
 
+    assert -1 <= args.freeze_earlier_blocks and args.freeze_earlier_blocks <= 4
+    if args.freeze_earlier_blocks != -1:
+        b0, b1, b2, b3, b4 = net.feature_extractor.list_blocks()
+        blocks = [b0, b1, b2, b3, b4]
+        for i in range(args.freeze_earlier_blocks + 1):
+            print('Freeze block%d' % i)
+            for m in blocks[i]:
+                for param in m.parameters():
+                    param.requires_grad = False
+
     # Create optimizer
     if args.optim == 'SGD':
         optimizer = optim.SGD(
-            net.parameters(),
+            filter(lambda p: p.requires_grad, net.parameters()),
             lr=args.lr, momentum=args.beta1, weight_decay=args.weight_decay)
     elif args.optim == 'Adam':
         optimizer = optim.Adam(
-            net.parameters(),
+            filter(lambda p: p.requires_grad, net.parameters()),
             lr=args.lr, betas=(args.beta1, 0.999), weight_decay=args.weight_decay)
     else:
         raise NotImplementedError()
@@ -157,6 +168,12 @@ if __name__ == '__main__':
 
         # Train phase
         net.train()
+        if args.freeze_earlier_blocks != -1:
+            b0, b1, b2, b3, b4 = net.feature_extractor.list_blocks()
+            blocks = [b0, b1, b2, b3, b4]
+            for i in range(args.freeze_earlier_blocks + 1):
+                for m in blocks[i]:
+                    m.eval()
         iterator_train = iter(loader_train)
         for _ in trange(len(loader_train),
                         desc='Train ep%s' % ith_epoch, position=1):
@@ -203,10 +220,10 @@ if __name__ == '__main__':
                 args.best_valid_loss = valid_loss['total']
                 save_model(net,
                            os.path.join(args.ckpt, args.id, 'best_valid.pth'),
-                           ith_epoch)
+                           args)
 
         # Periodically save model
         if ith_epoch % args.save_every == 0:
             save_model(net,
                        os.path.join(args.ckpt, args.id, 'epoch_%d.pth' % ith_epoch),
-                       ith_epoch)
+                       args)
