@@ -51,9 +51,13 @@ if __name__ == '__main__':
     parser.add_argument('--train_root_dir', default='data/train',
                         help='root directory to training dataset. '
                              'should contains img, label_cor subdirectories')
+    parser.add_argument('--train_txt', default=None,
+                        help='txt depicting xy pairs instead of predefined')
     parser.add_argument('--valid_root_dir', default='data/valid/',
                         help='root directory to validation dataset. '
                              'should contains img, label_cor subdirectories')
+    parser.add_argument('--valid_txt', default=None,
+                        help='txt depicting xy pairs instead of predefined')
     parser.add_argument('--no_flip', action='store_true',
                         help='disable left-right flip augmentation')
     parser.add_argument('--no_rotate', action='store_true',
@@ -103,7 +107,7 @@ if __name__ == '__main__':
 
     # Create dataloader
     dataset_train = PanoCorBonDataset(
-        root_dir=args.train_root_dir,
+        root_dir=args.train_root_dir, txt=args.train_txt,
         flip=not args.no_flip, rotate=not args.no_rotate, gamma=not args.no_gamma,
         stretch=not args.no_pano_stretch)
     loader_train = DataLoader(dataset_train, args.batch_size_train,
@@ -113,7 +117,7 @@ if __name__ == '__main__':
                               worker_init_fn=lambda x: np.random.seed())
     if args.valid_root_dir:
         dataset_valid = PanoCorBonDataset(
-            root_dir=args.valid_root_dir,
+            root_dir=args.valid_root_dir, txt=args.valid_txt,
             flip=False, rotate=False, gamma=False,
             stretch=False)
         loader_valid = DataLoader(dataset_valid, args.batch_size_valid,
