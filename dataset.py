@@ -97,8 +97,8 @@ class PanoCorBonDataset(data.Dataset):
                                                   z=50)
             bon_floor_x.extend(xys[:, 0])
             bon_floor_y.extend(xys[:, 1])
-        bon_ceil_x, bon_ceil_y = sort_xy_filter_unique(bon_ceil_x, bon_ceil_y)
-        bon_floor_x, bon_floor_y = sort_xy_filter_unique(bon_floor_x, bon_floor_y)
+        bon_ceil_x, bon_ceil_y = sort_xy_filter_unique(bon_ceil_x, bon_ceil_y, y_small_first=True)
+        bon_floor_x, bon_floor_y = sort_xy_filter_unique(bon_floor_x, bon_floor_y, y_small_first=False)
         bon = np.zeros((2, W))
         bon[0] = np.interp(np.arange(W), bon_ceil_x, bon_ceil_y, period=W)
         bon[1] = np.interp(np.arange(W), bon_floor_x, bon_floor_y, period=W)
@@ -154,9 +154,9 @@ class PanoCorBonDataset(data.Dataset):
         return out_lst
 
 
-def sort_xy_filter_unique(xs, ys):
+def sort_xy_filter_unique(xs, ys, y_small_first=True):
     xs, ys = np.array(xs), np.array(ys)
-    idx_sort = np.argsort(xs)
+    idx_sort = np.argsort(xs + ys / ys.max() * (int(y_small_first)*2-1))
     xs, ys = xs[idx_sort], ys[idx_sort]
     _, idx_unique = np.unique(xs, return_index=True)
     xs, ys = xs[idx_unique], ys[idx_unique]
