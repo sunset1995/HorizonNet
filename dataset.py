@@ -79,8 +79,8 @@ class PanoCorBonDataset(data.Dataset):
 
             # Detect occlusion
             occlusion = find_occlusion(cor[::2].copy()).repeat(2)
-            assert (cor[0::2, 0] != cor[1::2, 0]).sum() == 0
-            assert (cor[0::2, 1] > cor[1::2, 1]).sum() == 0
+            assert (np.abs(cor[0::2, 0] - cor[1::2, 0]) > W/100).sum() == 0, img_path
+            assert (cor[0::2, 1] > cor[1::2, 1]).sum() == 0, img_path
 
         # Stretch augmentation
         if self.stretch:
