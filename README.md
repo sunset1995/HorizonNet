@@ -6,7 +6,8 @@
 This is the implementation of our CVPR'19 "[
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
 
-**News, June 15** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)
+**News, June 15** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)  
+**News, Aug 19** - Report results on [Structured3D dataset](https://structured3d-dataset.org/) ([see the report](README_ST3D.md)).
 
 ![](assets/teaser.jpg)
 
@@ -37,7 +38,7 @@ This repo is a **pure python** implementation that you can:
 
 
 ## Download
-- [Dataset](https://drive.google.com/open?id=1e-MuWRx3T4LJ8Bu4Dc0tKcSHF9Lk_66C) for training/validation/testing
+- [PanoContext/Stanford2D3D Dataset](https://drive.google.com/open?id=1e-MuWRx3T4LJ8Bu4Dc0tKcSHF9Lk_66C) for training/validation/testing
     - Put all of them under `data` directory so you should get:
         ```
         HorizonNet/
@@ -54,6 +55,8 @@ This repo is a **pure python** implementation that you can:
 - [General room pretrained model](https://drive.google.com/open?id=1y7I4jfruer4uoMs0_YHAHHUDlcpGZmc-)
     - Trained on `train/` 817 pano images first
     - Finetuned on `finetune_general/` 66 images
+- [General room pretrained on Structured3D dataset](https://drive.google.com/open?id=1e4tXagwEYAhEmyzsiZiMxAKW481NETFJ)
+    - More detail see [here](README_ST3D.md)
 
 
 ## Inference on your images
