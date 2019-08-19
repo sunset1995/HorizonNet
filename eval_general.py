@@ -25,6 +25,9 @@ def test_general(dt_cor_id, gt_cor_id, w, h, losses):
     gt_floor_xy = post_proc.np_coor2xy(gt_floor_coor, ch, 1024, 512, floorW=1, floorH=1)
     dt_poly = Polygon(dt_floor_xy)
     gt_poly = Polygon(gt_floor_xy)
+    if not gt_poly.is_valid:
+        print('Skip ground truth invalid (%s)' % gt_path)
+        return
 
     area_dt = dt_poly.area
     area_gt = gt_poly.area
@@ -40,7 +43,12 @@ def test_general(dt_cor_id, gt_cor_id, w, h, losses):
 
     # Add a result
     n_corners = len(gt_floor_coor)
-    n_corners = str(n_corners) if n_corners < 10 else '10+'
+    if n_corners % 2 == 1:
+        n_corners = 'odd'
+    elif n_corners < 10:
+        n_corners = str(n_corners)
+    else:
+        n_corners = '10+'
     losses[n_corners]['2DIoU'].append(iou2d)
     losses[n_corners]['3DIoU'].append(iou3d)
     losses['overall']['2DIoU'].append(iou2d)
@@ -50,10 +58,10 @@ def test_general(dt_cor_id, gt_cor_id, w, h, losses):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--dt_glob', required=True,
+    parser.add_argument('--dt_glob',
                         help='NOTE: Remeber to quote your glob path.'
                              'Files assumed to be json from inference.py')
-    parser.add_argument('--gt_glob', default='data/test/label_cor/*txt',
+    parser.add_argument('--gt_glob',
                         help='NOTE: Remeber to quote your glob path.'
                              'Files assumed to be txt')
     parser.add_argument('--w', default=1024, type=int,
@@ -68,7 +76,7 @@ if __name__ == '__main__':
     # Testing
     losses = dict([
         (n_corner, {'2DIoU': [], '3DIoU': []})
-        for n_corner in ['4', '6', '8', '10+', 'overall']
+        for n_corner in ['4', '6', '8', '10+', 'odd', 'overall']
     ])
     for gt_path, dt_path in tqdm(gtdt_pairs, desc='Testing'):
         # Parse ground truth
