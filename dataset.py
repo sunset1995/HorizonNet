@@ -15,33 +15,17 @@ class PanoCorBonDataset(data.Dataset):
     See README.md for how to prepare the dataset.
     '''
 
-    def __init__(self, root_dir, txt=None,
+    def __init__(self, root_dir,
                  flip=False, rotate=False, gamma=False, stretch=False,
                  p_base=0.96, max_stretch=2.0,
                  normcor=False, return_cor=False, return_path=False):
-        if txt is None:
-            '''
-            No txt recording xy paired is given.
-            Assume:
-                {root_dir}/img/*[jpg|png], {root_dir}/label_cor/*txt
-            are paired.
-            '''
-            self.img_dir = os.path.join(root_dir, 'img')
-            self.cor_dir = os.path.join(root_dir, 'label_cor')
-            self.img_fnames = sorted([
-                fname for fname in os.listdir(self.img_dir)
-                if fname.endswith('.jpg') or fname.endswith('.png')
-            ])
-            self.txt_fnames = ['%s.txt' % fname[:-4] for fname in self.img_fnames]
-        else:
-            self.img_dir = root_dir
-            self.cor_dir = root_dir
-            with open(txt) as f:
-                lines = [
-                    line.strip().split()
-                    for line in f if line.strip()]
-            self.img_fnames = [xpath for xpath, ypath in lines]
-            self.txt_fnames = [ypath for xpath, ypath in lines]
+        self.img_dir = os.path.join(root_dir, 'img')
+        self.cor_dir = os.path.join(root_dir, 'label_cor')
+        self.img_fnames = sorted([
+            fname for fname in os.listdir(self.img_dir)
+            if fname.endswith('.jpg') or fname.endswith('.png')
+        ])
+        self.txt_fnames = ['%s.txt' % fname[:-4] for fname in self.img_fnames]
         self.flip = flip
         self.rotate = rotate
         self.gamma = gamma
@@ -247,7 +231,6 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', default='data/valid/')
-    parser.add_argument('--txt', default=None)
     parser.add_argument('--ith', default=0, type=int,
                         help='Pick a data id to visualize.'
                              '-1 for visualize all data')
@@ -269,7 +252,7 @@ if __name__ == '__main__':
         print('    {:16} {}'.format(key, val))
 
     dataset = PanoCorBonDataset(
-        root_dir=args.root_dir, txt=args.txt,
+        root_dir=args.root_dir,
         flip=args.flip, rotate=args.rotate, gamma=args.gamma, stretch=args.stretch,
         return_path=True)
 
