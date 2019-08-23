@@ -40,13 +40,25 @@ python eval_general.py --dt_glob "./tmp/*json" --gt_glob "data/st3d_test_full_ra
 ## Results
 Below is the quantitative result on Structured3D testing set with [this trained weight](https://drive.google.com/file/d/1e4tXagwEYAhEmyzsiZiMxAKW481NETFJ/view?usp=sharing)
 
+#### Backbone: densenet169
 | # of corners | instances | 3D IoU | 2D IoU |
 | :----------: | :-------: | :----: | :----: |
-| 4            | 1067      | 93.79  | 95.26 |
-| 6            | 290       | 90.96  | 90.96 |
-| 8            | 130       | 89.38  | 89.38 |
-| 10+          | 202       | 82.62  | 82.62 |
-| odd          | 4         | 91.22  | 91.22 |
+| 4            | 1067      | 93.90  | 95.34 |
+| 6            | 290       | 90.02  | 91.20 |
+| 8            | 130       | 87.93  | 89.40 |
+| 10+          | 202       | 81.64  | 82.79 |
+| odd          | 4         | 89.63  | 91.10 |
+| overall      | 1693      | 91.30  | 92.67 |
+
+#### Backbone: resnet50
+| # of corners | instances | 3D IoU | 2D IoU |
+| :----------: | :-------: | :----: | :----: |
+| 4            | 1067      | 94.21  | 95.55 |
+| 6            | 290       | 90.07  | 91.24 |
+| 8            | 130       | 88.04  | 89.48 |
+| 10+          | 202       | 81.54  | 82.71 |
+| odd          | 4         | 88.91  | 90.23 |
+| overall      | 1693      | 91.50  | 92.80 |
 
 - 2D IoU are based on top-down view
 - The `odd` row mean non-even number of corners (ground truth is obviously non-manhattan layout while model output is the approximation of it)
