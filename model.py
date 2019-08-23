@@ -211,9 +211,9 @@ class HorizonNet(nn.Module):
             self.drop_out = nn.Dropout(0.5)
             self.linear = nn.Linear(in_features=2 * self.rnn_hidden_size,
                                     out_features=3 * self.step_cols)
-            self.linear.bias.data[0::4].fill_(-1)
-            self.linear.bias.data[4::8].fill_(-0.478)
-            self.linear.bias.data[8::12].fill_(0.425)
+            self.linear.bias.data[0:4].fill_(-1)
+            self.linear.bias.data[4:8].fill_(-0.478)
+            self.linear.bias.data[8:12].fill_(0.425)
         else:
             self.linear = nn.Sequential(
                 nn.Linear(c_last, self.rnn_hidden_size),
@@ -221,9 +221,9 @@ class HorizonNet(nn.Module):
                 nn.Dropout(0.5),
                 nn.Linear(self.rnn_hidden_size, 3 * self.step_cols),
             )
-            self.linear[-1].bias.data[0::4].fill_(-1)
-            self.linear[-1].bias.data[4::8].fill_(-0.478)
-            self.linear[-1].bias.data[8::12].fill_(0.425)
+            self.linear[-1].bias.data[0:4].fill_(-1)
+            self.linear[-1].bias.data[4:8].fill_(-0.478)
+            self.linear[-1].bias.data[8:12].fill_(0.425)
         self.x_mean.requires_grad = False
         self.x_std.requires_grad = False
         wrap_lr_pad(self)
