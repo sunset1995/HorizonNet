@@ -59,7 +59,7 @@ def save_model(net, path, args):
 
 
 def load_trained_model(Net, path):
-    state_dict = torch.load(path)
+    state_dict = torch.load(path, map_location='cpu')
     net = Net(**state_dict['kwargs'])
     net.load_state_dict(state_dict['state_dict'])
     return net
