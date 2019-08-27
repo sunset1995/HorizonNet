@@ -26,6 +26,14 @@ def feed_forward(net, x, y_bon, y_cor):
     losses['cor'] = F.binary_cross_entropy_with_logits(y_cor_, y_cor)
     losses['total'] = losses['bon'] + losses['cor']
 
+    # For model selection
+    with torch.no_grad():
+        nobrain_baseline_bon = np.pi / 4
+        nobrain_baseline_cor = 0.2
+        score_bon = 1 - (y_bon_ - y_bon).abs().mean() / nobrain_baseline_bon
+        score_cor = 1 - (torch.sigmoid(y_cor_) - y_cor).abs().mean() / nobrain_baseline_cor
+        losses['score'] = (score_bon + score_cor) / 2
+
     return losses
 
 
@@ -161,7 +169,7 @@ if __name__ == '__main__':
     args.max_iters = args.epochs * len(loader_train)
     args.running_lr = args.warmup_lr if args.warmup_epochs > 0 else args.lr
     args.cur_iter = 0
-    args.best_valid_loss = 1e9
+    args.best_valid_score = 0
 
     # Start training
     for ith_epoch in trange(1, args.epochs + 1, desc='Epoch', unit='ep'):
@@ -201,7 +209,6 @@ if __name__ == '__main__':
         if args.valid_root_dir:
             iterator_valid = iter(loader_valid)
             valid_loss = {}
-            valid_num = 0
             for _ in trange(len(loader_valid),
                             desc='Valid ep%d' % ith_epoch, position=2):
                 x, y_bon, y_cor = next(iterator_valid)
@@ -209,15 +216,14 @@ if __name__ == '__main__':
                     losses = feed_forward(net, x, y_bon, y_cor)
                 for k, v in losses.items():
                     valid_loss[k] = valid_loss.get(k, 0) + v.item() * x.size(0)
-                    valid_num += x.size(0)
 
             for k, v in valid_loss.items():
                 k = 'valid/%s' % k
-                tb_writer.add_scalar(k, v / valid_num, ith_epoch)
+                tb_writer.add_scalar(k, v / len(dataset_valid), ith_epoch)
 
             # Save best validation loss model
-            if valid_loss['total'] < args.best_valid_loss:
-                args.best_valid_loss = valid_loss['total']
+            if valid_loss['score'] > args.best_valid_score:
+                args.best_valid_score = valid_loss['score'] / len(dataset_valid)
                 save_model(net,
                            os.path.join(args.ckpt, args.id, 'best_valid.pth'),
                            args)
