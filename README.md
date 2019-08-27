@@ -7,7 +7,7 @@ This is the implementation of our CVPR'19 "[
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
 
 **News, June 15** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)  
-**News, Aug 19** - Report results on [Structured3D dataset](https://structured3d-dataset.org/) ([see the report](README_ST3D.md)).
+**News, Aug 19** - Report results on [Structured3D dataset](https://structured3d-dataset.org/) [[:bar_chart: See st3d report]](README_ST3D.md).
 
 ![](assets/teaser.jpg)
 
@@ -37,26 +37,33 @@ This repo is a **pure python** implementation that you can:
 - open3d>=0.7 (for layout 3D viewer)
 
 
-## Download
-- [PanoContext/Stanford2D3D Dataset](https://drive.google.com/open?id=1e-MuWRx3T4LJ8Bu4Dc0tKcSHF9Lk_66C) for training/validation/testing
-    - Put all of them under `data` directory so you should get:
-        ```
-        HorizonNet/
-        |--data/
-        |  |--finetune_general/
-        |  |--test/
-        |  |--train/
-        |  |--valid/
-        ```
-    - `test`, `train`, `valid` are processed from [LayoutNet's cuboid dataset](https://github.com/zouchuhang/LayoutNet).
-    - `finetune_general` is re-annotated by us from `train` and `valid`. It contains  65 general shaped rooms.
-- [Cuboid room pretrained model](https://drive.google.com/open?id=1N3y2AVrd8GATVdz7VPjS8r24bDSmpbb7)
-    - Trained on `train/` 817 pano images
-- [General room pretrained model](https://drive.google.com/open?id=1y7I4jfruer4uoMs0_YHAHHUDlcpGZmc-)
-    - Trained on `train/` 817 pano images first
-    - Finetuned on `finetune_general/` 66 images
-- [General room pretrained on Structured3D dataset](https://drive.google.com/open?id=1e4tXagwEYAhEmyzsiZiMxAKW481NETFJ)
-    - More detail see [here](README_ST3D.md)
+## Download Dataset
+- PanoContext/Stanford2D3D Dataset
+    - [Download preprocessed pano/s2d3d](https://drive.google.com/open?id=1e-MuWRx3T4LJ8Bu4Dc0tKcSHF9Lk_66C) for training/validation/testing
+        - Put all of them under `data` directory so you should get:
+            ```
+            HorizonNet/
+            ├──data/
+            |  ├──layoutnet_dataset/
+            |  |  |--finetune_general/
+            |  |  |--test/
+            |  |  |--train/
+            |  |  |--valid/
+            ```
+        - `test`, `train`, `valid` are processed from [LayoutNet's cuboid dataset](https://github.com/zouchuhang/LayoutNet).
+        - `finetune_general` is re-annotated by us from `train` and `valid`. It contains  65 general shaped rooms.
+- Structured3D Dataset
+    - Please contact [Structured3D](https://structured3d-dataset.org/) to get the datas.
+    - Following [this](https://github.com/sunset1995/HorizonNet/blob/master/README_ST3D.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
+
+
+## Download Pretrained Models
+- [resnet50_rnn__panos2d3d.pth](https://drive.google.com/open?id=1aieMd61b-3BoOeTRv2pKu9yTk5zEinn0)
+    - Trained on PanoContext/Stanford2d3d 817 pano images.
+    - Trained for 300 epoch.
+- [resnet50_rnn__st3d.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO)
+    - Trained on Structured3D 18362 pano images with setting of original furniture and lighting.
+    - Trained for 50 epoch.
 
 
 ## Inference on your images
@@ -90,16 +97,15 @@ In below explaination, I will use `assets/demo.png` for example.
 ### 2. Estimating layout with HorizonNet
 - **Execution**: Predict the layout from above aligned image and line segments by firing below command.
     ```
-    python inference.py --flip --pth ckpt/finetune_general.pth --img_glob assets/preprocessed/demo_aligned_rgb.png --output_dir assets/inferenced --visualize --relax_cuboid
+    python inference.py --pth ckpt/resnet50_rnn__st3d.pth --img_glob assets/preprocessed/demo_aligned_rgb.png --output_dir assets/inferenced --visualize --relax_cuboid
     ```
-    - `--flip` optional testing augmentation.
     - `--pth` path to the trained model.
     - `--img_glob` path to the preprocessed image.
     - `--output_dir` path to the directory to dump results.
     - `--visualize` optinoal for visualizing model raw outputs.
     - `--relax_cuboid`
-        - **Model trained on cuboid only**: do NOT add `--relax_cuboid` to force outputing cuboid
-        - **Model trained on general shaped**: always add `--relax_cuboid`
+        - If **Model trained on cuboid only** :point_right: do NOT add `--relax_cuboid` to force outputing cuboid
+        - If **Model trained on general shaped** :point_right: ALWAYS add `--relax_cuboid`
 - **Outputs**: You will get results like below and prefix with source image basename.
     - The 1d representation are visualized under file name `[SOURCE BASENAME].raw.png`
     - The extracted corners of the layout `[SOURCE BASENAME].json`
@@ -136,27 +142,27 @@ python train.py --id resnet50_rnn
     - `--ckpt` folder to output checkpoints (default: ./ckpt)
     - `--logs` folder to logging (default: ./logs)
     - `--pth` finetune mode if given. path to load saved checkpoint.
-    - `--backbone` {resnet18,resnet50,resnet101} backbone of the network (default: resnet50)
+    - `--backbone` backbone of the network (default: resnet50)
+        - other options: `{resnet18,resnet34,resnet50,resnet101,resnet152,resnext50_32x4d,resnext101_32x8d,densenet121,densenet169,densenet161,densenet201}`
     - `--no_rnn` whether to remove rnn (default: False)
-    - `--train_root_dir` root directory to training dataset. (default: `data/train`)
-    - `--valid_root_dir` root directory to validation dataset. (default: `data/valid/`)
+    - `--train_root_dir` root directory to training dataset. (default: `data/layoutnet_dataset/train`)
+    - `--valid_root_dir` root directory to validation dataset. (default: `data/layoutnet_dataset/valid/`)
     - `--batch_size_train` training mini-batch size (default: 8)
     - `--epochs` epochs to train (default: 300)
     - `--lr` learning rate (default: 0.0001)
 
 
 ## Quantitative Evaluation - Cuboid Layout
-To evaluate on LayoutNet dataset, first running the cuboid trained model for all testing images:
+To evaluate on PanoContext/Stanford2d3d dataset, first running the cuboid trained model for all testing images:
 ```
-python inference.py --flip --pth ckpt/resnet50-rnn.pth --img_glob "data/test/img/*png" --output_dir tmp
+python inference.py --pth ckpt/resnet50_rnn__panos2d3d.pth --img_glob "data/layoutnet_dataset/test/img/*" --output_dir tmp
 ```
-- `--flip` optional testing augmentation.
 - `--img_glob` shell-style wildcards for all testing images.
 - `--output_dir` path to the directory to dump results.
 
 To get the quantitative result:
 ```
-python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/test/label_cor/*txt"
+python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/*txt"
 ```
 - `--dt_glob` shell-style wildcards for all the model estimation.
 - `--gt_glob` shell-style wildcards for all the ground truth.
@@ -164,19 +170,21 @@ Replace `"tmp/*json"`
 - with `"tmp/pano*json"` for evaluate on PaonContext only
 - with `"tmp/camera*json"` for evaluate on Stanford2D3D only
 
-The quantitative result for the pretrained model is shown below:
+If you want to:  
+- just evaluate PanoContext `python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/pano*txt"`
+- just evaluate Stanford2d3d `python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/camera*txt"`
+
+:clipboard: The quantitative result for the pretrained model is shown below:
 
 | Testing Dataset | 3D IoU(%) | Corner error(%) | Pixel error(%) |
 | :-------------: | :-------: | :------: | :--------------: |
-| PanoContext     | `82.96` | `0.75` | `2.16` |
-| Stanford2D3D    | `83.80` | `0.65` | `1.96` |
-| All             | `83.53` | `0.68` | `2.02` |
+| PanoContext     | `83.39` | `0.76` | `2.13` |
+| Stanford2D3D    | `84.09` | `0.63` | `2.06` |
+| All             | `83.87` | `0.67` | `2.08` |
 
 
 ## Quantitative Evaluation - Genral Layout
-**Note:** run `inference.py` with `--relax_cuboid` for general layout.
-
-See `eval_general.py`, arguments are the same as `eval_cuboid.py`.
+[[:bar_chart: See st3d report]](README_ST3D.md) for more detail.
 
 
 ## TODO
@@ -191,12 +199,12 @@ See `eval_general.py`, arguments are the same as `eval_cuboid.py`.
 ## Citation
 Please cite our paper for any purpose of usage.
 ```
-@InProceedings{Sun_2019_CVPR,
-    author = {Sun, Cheng and Hsiao, Chi-Wei and Sun, Min and Chen, Hwann-Tzong},
-    title = {HorizonNet: Learning Room Layout With 1D Representation and Pano Stretch Data Augmentation},
-    booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month = {June},
-    year = {2019}
+@inproceedings{sun2019horizonnet,
+  title={Horizonnet: Learning room layout with 1d representation and pano stretch data augmentation},
+  author={Sun, Cheng and Hsiao, Chi-Wei and Sun, Min and Chen, Hwann-Tzong},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={1047--1056},
+  year={2019}
 }
 ```
 

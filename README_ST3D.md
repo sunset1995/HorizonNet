@@ -16,18 +16,19 @@
 
 ## Training
 ```bash
-python train.py --id st3d_full_densenet169_rnn --train_root_dir data/st3d_train_full_raw_light/ --valid_root_dir data/st3d_valid_full_raw_light/
+python train.py --train_root_dir data/st3d_train_full_raw_light/ --valid_root_dir data/st3d_valid_full_raw_light/ --id resnet50_rnn__st3d --lr 3e-4 --batch_size_train 24 --epochs 50
 ```
-Most common parameters you may want to tune (see `python train.py -h` for more detail):
-- `--batch_size_train` according to your computational resource (at least 2, it works from my experience)
-- `--backbone`: support `{resnet18,resnet34,resnet50,resnet101,resnet152,resnext50_32x4d,resnext101_32x8d,densenet121,densenet169,densenet161,densenet201}`
+See `python train.py -h` for more detail or [README.md](https://github.com/sunset1995/HorizonNet/blob/master/README.md) for more detail.
+
+Download the trained model: [resnet50_rnn__st3d.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO).
+> The best selected model is epoch 50 which suggested that it still has the potential to improve by training longer.
 
 ## Testing
-Generating layout from unseen images:
+Generating layout for testing set:
 ```bash
-python inference.py --pth ckpt/st3d_full_densenet169_rnn/best_valid.pth --img_glob "data/st3d_test_full_raw_light/img/*" --output_dir ./tmp --visualize --relax_cuboid
+python inference.py --pth ckpt/resnet50_rnn__st3d.pth --img_glob "data/st3d_test_full_raw_light/img/*" --output_dir tmp/ --visualize --relax_cuboid
 ```
-- `--relax_cuboid`: MUST added (as we train with not only cuboid layout).
+- `--relax_cuboid`: **MUST** added (as we train with not only cuboid layout).
 - `--output_dir`: a directory you want to dump the extracted layout
 - `--visualize`: visualize raw output (without post-processing) from HorizonNet.
 
@@ -38,27 +39,16 @@ python eval_general.py --dt_glob "./tmp/*json" --gt_glob "data/st3d_test_full_ra
 ```
 
 ## Results
-Below is the quantitative result on Structured3D testing set with [this trained weight](https://drive.google.com/file/d/1e4tXagwEYAhEmyzsiZiMxAKW481NETFJ/view?usp=sharing)
+:clipboard: Below is the quantitative result on Structured3D testing set.
 
-#### Backbone: densenet169
 | # of corners | instances | 3D IoU | 2D IoU |
 | :----------: | :-------: | :----: | :----: |
-| 4            | 1067      | 93.90  | 95.34 |
-| 6            | 290       | 90.02  | 91.20 |
-| 8            | 130       | 87.93  | 89.40 |
-| 10+          | 202       | 81.64  | 82.79 |
-| odd          | 4         | 89.63  | 91.10 |
-| overall      | 1693      | 91.30  | 92.67 |
-
-#### Backbone: resnet50
-| # of corners | instances | 3D IoU | 2D IoU |
-| :----------: | :-------: | :----: | :----: |
-| 4            | 1067      | 94.21  | 95.55 |
-| 6            | 290       | 90.07  | 91.24 |
-| 8            | 130       | 88.04  | 89.48 |
-| 10+          | 202       | 81.54  | 82.71 |
-| odd          | 4         | 88.91  | 90.23 |
-| overall      | 1693      | 91.50  | 92.80 |
+| 4            | 1067      | `94.14`  | `95.50` |
+| 6            | 290       | `90.34`  | `91.54` |
+| 8            | 130       | `87.98`  | `89.43` |
+| 10+          | 202       | `79.95`  | `81.10` |
+| odd          | 4         | `88.62`  | `89.80` |
+| overall      | 1693      | `91.31`  | `92.63` |
 
 - 2D IoU are based on top-down view
 - The `odd` row mean non-even number of corners (ground truth is obviously non-manhattan layout while model output is the approximation of it)
@@ -90,3 +80,4 @@ Four instances are skip by `eval_general.py` as the ground truth is self-interse
 ![](assets/result_pano_ea422c8bd1dff8113cf803b337cafc14.png)
 ![](assets/result_pano_f19f1a6a5015c26e01808f72d151e894.png)
 ![](assets/result_pano_fd65b5c485c70c3b68c17f6a0eb23cc6.png)
+

@@ -56,10 +56,10 @@ if __name__ == '__main__':
     parser.add_argument('--no_rnn', action='store_true',
                         help='whether to remove rnn or not')
     # Dataset related arguments
-    parser.add_argument('--train_root_dir', default='data/train',
+    parser.add_argument('--train_root_dir', default='data/layoutnet_dataset/train',
                         help='root directory to training dataset. '
                              'should contains img, label_cor subdirectories')
-    parser.add_argument('--valid_root_dir', default='data/valid/',
+    parser.add_argument('--valid_root_dir', default='data/layoutnet_dataset/valid',
                         help='root directory to validation dataset. '
                              'should contains img, label_cor subdirectories')
     parser.add_argument('--no_flip', action='store_true',
