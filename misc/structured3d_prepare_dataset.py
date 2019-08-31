@@ -17,7 +17,7 @@ The reorganized structure as follow:
 - {out_train_root}
     - img/
         - scene_xxxxx_*png (softlink)
-    - layout/
+    - label_cor/
         - scene_xxxxx_*txt (softlink)
 - {out_valid_root} ...
 - {out_test_root} ...
