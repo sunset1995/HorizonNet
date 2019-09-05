@@ -223,7 +223,7 @@ if __name__ == '__main__':
 
             # Save best validation loss model
             if valid_loss['score'] > args.best_valid_score:
-                args.best_valid_score = valid_loss['score'] / len(dataset_valid)
+                args.best_valid_score = valid_loss['score']
                 save_model(net,
                            os.path.join(args.ckpt, args.id, 'best_valid.pth'),
                            args)
