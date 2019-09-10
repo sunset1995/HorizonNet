@@ -250,9 +250,9 @@ if __name__ == '__main__':
 
     # Launch point cloud viewer
     print('Showing %d of points...' % len(all_rgb))
-    pcd = open3d.PointCloud()
-    pcd.points = open3d.Vector3dVector(all_xyz)
-    pcd.colors = open3d.Vector3dVector(all_rgb)
+    pcd = open3d.geometry.PointCloud()
+    pcd.points = open3d.utility.Vector3dVector(all_xyz)
+    pcd.colors = open3d.utility.Vector3dVector(all_rgb)
 
     # Visualize result
     tobe_visualize = [pcd]
