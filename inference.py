@@ -74,7 +74,7 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False,
     H, W = tuple(x.shape[2:])
 
     # Network feedforward (with testing augmentation)
-    x, aug_type = augment(x, args.flip, args.rotate)
+    x, aug_type = augment(x, flip, rotate)
     y_bon_, y_cor_ = net(x.to(device))
     y_bon_ = augment_undo(y_bon_.cpu(), aug_type).mean(0)
     y_cor_ = augment_undo(torch.sigmoid(y_cor_).cpu(), aug_type).mean(0)
