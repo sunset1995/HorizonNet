@@ -137,7 +137,7 @@ def warp_floor_ceiling(equirect_texture, ceil_floor_mask, xy, z_floor, z_ceiling
     return floor_texture, floor_xyz, ceil_texture, ceil_xyz
 
 
-def create_occlusion_mask(xyz):
+def create_occlusion_mask(xyz, H, W):
     xs, ys, zs = xyz.T
     ds = np.sqrt(xs**2 + ys**2 + zs**2)
 
@@ -244,7 +244,7 @@ if __name__ == '__main__':
     all_rgb = np.array(all_rgb)
 
     # Filter occluded points
-    occlusion_mask, reord_idx = create_occlusion_mask(all_xyz)
+    occlusion_mask, reord_idx = create_occlusion_mask(all_xyz, H, W)
     all_xyz = all_xyz[reord_idx][~occlusion_mask]
     all_rgb = all_rgb[reord_idx][~occlusion_mask]
 
