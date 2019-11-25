@@ -32,14 +32,17 @@ def test_general(dt_cor_id, gt_cor_id, w, h, losses):
     area_dt = dt_poly.area
     area_gt = gt_poly.area
     area_inter = dt_poly.intersection(gt_poly).area
+
     iou2d = area_inter / (area_gt + area_dt - area_inter)
     cch_dt = post_proc.get_z1(dt_floor_coor[:, 1], dt_ceil_coor[:, 1], ch, 512)
     cch_gt = post_proc.get_z1(gt_floor_coor[:, 1], gt_ceil_coor[:, 1], ch, 512)
 
     h_dt = abs(cch_dt.mean() - ch)
     h_gt = abs(cch_gt.mean() - ch)
-    iouH = min(h_dt, h_gt) / max(h_dt, h_gt)
-    iou3d = iou2d * iouH
+    area3d_inter = area_inter * min(h_dt, h_gt)
+    area3d_pred = area_dt * h_dt
+    area3d_gt = area_gt * h_gt
+    iou3d = area3d_inter / (area3d_pred + area3d_gt - area3d_inter)
 
     # Add a result
     n_corners = len(gt_floor_coor)
@@ -104,4 +107,3 @@ if __name__ == '__main__':
         print('    3DIoU: %.2f' % (
             iou3d.mean() * 100,
         ))
-
