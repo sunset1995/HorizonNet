@@ -71,24 +71,33 @@ def test_general(dt_cor_id, gt_cor_id, w, h, losses):
         return
 
     # 2D IoU
-    area_dt = dt_poly.area
-    area_gt = gt_poly.area
-    area_inter = dt_poly.intersection(gt_poly).area
-    iou2d = area_inter / (area_gt + area_dt - area_inter)
+    try:
+        area_dt = dt_poly.area
+        area_gt = gt_poly.area
+        area_inter = dt_poly.intersection(gt_poly).area
+        iou2d = area_inter / (area_gt + area_dt - area_inter)
+    except:
+        iou2d = 0
 
     # 3D IoU
-    cch_dt = post_proc.get_z1(dt_floor_coor[:, 1], dt_ceil_coor[:, 1], ch, 512)
-    cch_gt = post_proc.get_z1(gt_floor_coor[:, 1], gt_ceil_coor[:, 1], ch, 512)
-    h_dt = abs(cch_dt.mean() - ch)
-    h_gt = abs(cch_gt.mean() - ch)
-    area3d_inter = area_inter * min(h_dt, h_gt)
-    area3d_pred = area_dt * h_dt
-    area3d_gt = area_gt * h_gt
-    iou3d = area3d_inter / (area3d_pred + area3d_gt - area3d_inter)
+    try:
+        cch_dt = post_proc.get_z1(dt_floor_coor[:, 1], dt_ceil_coor[:, 1], ch, 512)
+        cch_gt = post_proc.get_z1(gt_floor_coor[:, 1], gt_ceil_coor[:, 1], ch, 512)
+        h_dt = abs(cch_dt.mean() - ch)
+        h_gt = abs(cch_gt.mean() - ch)
+        area3d_inter = area_inter * min(h_dt, h_gt)
+        area3d_pred = area_dt * h_dt
+        area3d_gt = area_gt * h_gt
+        iou3d = area3d_inter / (area3d_pred + area3d_gt - area3d_inter)
+    except:
+        iou3d = 0
 
     # rmse & delta_1
-    dt_layout_depth = layout_2_depth(dt_cor_id, h, w)
     gt_layout_depth = layout_2_depth(gt_cor_id, h, w)
+    try:
+        dt_layout_depth = layout_2_depth(dt_cor_id, h, w)
+    except:
+        dt_layout_depth = np.zeros_like(gt_layout_depth)
     rmse = ((gt_layout_depth - dt_layout_depth)**2).mean() ** 0.5
     thres = np.maximum(gt_layout_depth/dt_layout_depth, dt_layout_depth/gt_layout_depth)
     delta_1 = (thres < 1.25).mean()
@@ -156,7 +165,7 @@ if __name__ == '__main__':
         if len(iou2d) == 0:
             continue
         print('GT #Corners: %s  (%d instances)' % (k, len(iou2d)))
-        print('    2DIoU : %.2f' % (iou2d.mean() * 100))
-        print('    3DIoU : %.2f' % (iou3d.mean() * 100))
-        print('    RMSE  : %.2f' % (rmse.mean()))
-        print('    delta1: %.2f' % (delta_1.mean()))
+        print('    2DIoU  : %.2f' % (iou2d.mean() * 100))
+        print('    3DIoU  : %.2f' % (iou3d.mean() * 100))
+        print('    RMSE   : %.2f' % (rmse.mean()))
+        print('    delta^1: %.2f' % (delta_1.mean()))
