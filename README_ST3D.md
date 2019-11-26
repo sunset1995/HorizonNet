@@ -1,5 +1,10 @@
 # Results on Structured3D dataset
 
+References:
+- [Structured3D: A Large Photo-realistic Dataset for Structured 3D Modeling](https://arxiv.org/abs/1908.00222)
+- [Structured3D project page](http://structured3d-dataset.org)
+- [Structured3D github](https://github.com/bertjiazheng/Structured3D)
+
 ## Dataset preparation
 - Please contact [Structured3D](http://structured3d-dataset.org) to get the datas.
 - Download all zip files under `{YOUR_DIR}`. Don't extract them.
@@ -26,16 +31,15 @@ Download the trained model: [resnet50_rnn__st3d.pth](https://drive.google.com/op
 ## Testing
 Generating layout for testing set:
 ```bash
-python inference.py --pth ckpt/resnet50_rnn__st3d.pth --img_glob "data/st3d_test_full_raw_light/img/*" --output_dir tmp/ --visualize --relax_cuboid
+python inference.py --pth ckpt/resnet50_rnn__st3d.pth --img_glob "data/st3d_test_full_raw_light/img/*" --output_dir ./output/st3d/resnet50_rnn/ --visualize
 ```
-- `--relax_cuboid`: **MUST** added (as we train with not only cuboid layout).
 - `--output_dir`: a directory you want to dump the extracted layout
 - `--visualize`: visualize raw output (without post-processing) from HorizonNet.
 
 
 Quantitativly evaluate:
 ```bash
-python eval_general.py --dt_glob "./tmp/*json" --gt_glob "data/st3d_test_full_raw_light/label_cor/*"
+python eval_general.py --dt_glob "./output/st3d/resnet50_rnn/*json" --gt_glob "data/st3d_test_full_raw_light/label_cor/*"
 ```
 
 ## Results
@@ -50,7 +54,6 @@ python eval_general.py --dt_glob "./tmp/*json" --gt_glob "data/st3d_test_full_ra
 | odd          | 4         | `88.62`  | `89.80` |
 | overall      | 1693      | `91.31`  | `92.63` |
 
-- 2D IoU are based on top-down view
 - The `odd` row mean non-even number of corners (ground truth is obviously non-manhattan layout while model output is the approximation of it)
 
 #### Invalid Ground Truth
