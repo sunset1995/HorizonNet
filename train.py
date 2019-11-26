@@ -68,7 +68,7 @@ if __name__ == '__main__':
                         help='numbers of workers for dataloaders')
     # optimization related arguments
     parser.add_argument('--freeze_earlier_blocks', default=-1, type=int)
-    parser.add_argument('--batch_size_train', default=8, type=int,
+    parser.add_argument('--batch_size_train', default=4, type=int,
                         help='training mini-batch size')
     parser.add_argument('--batch_size_valid', default=2, type=int,
                         help='validation mini-batch size')
@@ -88,6 +88,7 @@ if __name__ == '__main__':
                         help='momentum for sgd, beta1 for adam')
     parser.add_argument('--weight_decay', default=0, type=float,
                         help='factor for L2 regularization')
+    parser.add_argument('--bn_momentum', type=float)
     # Misc arguments
     parser.add_argument('--no_cuda', action='store_true',
                         help='disable cuda')
@@ -136,6 +137,11 @@ if __name__ == '__main__':
             for m in blocks[i]:
                 for param in m.parameters():
                     param.requires_grad = False
+
+    if args.bn_momentum:
+        for m in net.modules():
+            if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d)):
+                m.momentum = args.bn_momentum
 
     # Create optimizer
     if args.optim == 'SGD':
