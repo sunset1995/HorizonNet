@@ -82,27 +82,7 @@ class PanoCorBonDataset(data.Dataset):
             img, cor = panostretch.pano_stretch(img, cor, kx, ky)
 
         # Prepare 1d ceiling-wall/floor-wall boundary
-        bon_ceil_x, bon_ceil_y = [], []
-        bon_floor_x, bon_floor_y = [], []
-        n_cor = len(cor)
-        for i in range(n_cor // 2):
-            xys = panostretch.pano_connect_points(cor[i*2],
-                                                  cor[(i*2+2) % n_cor],
-                                                  z=-50)
-            bon_ceil_x.extend(xys[:, 0])
-            bon_ceil_y.extend(xys[:, 1])
-        for i in range(n_cor // 2):
-            xys = panostretch.pano_connect_points(cor[i*2+1],
-                                                  cor[(i*2+3) % n_cor],
-                                                  z=50)
-            bon_floor_x.extend(xys[:, 0])
-            bon_floor_y.extend(xys[:, 1])
-        bon_ceil_x, bon_ceil_y = sort_xy_filter_unique(bon_ceil_x, bon_ceil_y, y_small_first=True)
-        bon_floor_x, bon_floor_y = sort_xy_filter_unique(bon_floor_x, bon_floor_y, y_small_first=False)
-        bon = np.zeros((2, W))
-        bon[0] = np.interp(np.arange(W), bon_ceil_x, bon_ceil_y, period=W)
-        bon[1] = np.interp(np.arange(W), bon_floor_x, bon_floor_y, period=W)
-        bon = ((bon + 0.5) / img.shape[0] - 0.5) * np.pi
+        bon = cor_2_1d(cor, H, W)
 
         # Random flip
         if self.flip and np.random.randint(2) == 0:
@@ -152,6 +132,31 @@ class PanoCorBonDataset(data.Dataset):
             out_lst.append(img_path)
 
         return out_lst
+
+
+def cor_2_1d(cor, H, W):
+    bon_ceil_x, bon_ceil_y = [], []
+    bon_floor_x, bon_floor_y = [], []
+    n_cor = len(cor)
+    for i in range(n_cor // 2):
+        xys = panostretch.pano_connect_points(cor[i*2],
+                                              cor[(i*2+2) % n_cor],
+                                              z=-50, w=W, h=H)
+        bon_ceil_x.extend(xys[:, 0])
+        bon_ceil_y.extend(xys[:, 1])
+    for i in range(n_cor // 2):
+        xys = panostretch.pano_connect_points(cor[i*2+1],
+                                              cor[(i*2+3) % n_cor],
+                                              z=50, w=W, h=H)
+        bon_floor_x.extend(xys[:, 0])
+        bon_floor_y.extend(xys[:, 1])
+    bon_ceil_x, bon_ceil_y = sort_xy_filter_unique(bon_ceil_x, bon_ceil_y, y_small_first=True)
+    bon_floor_x, bon_floor_y = sort_xy_filter_unique(bon_floor_x, bon_floor_y, y_small_first=False)
+    bon = np.zeros((2, W))
+    bon[0] = np.interp(np.arange(W), bon_ceil_x, bon_ceil_y, period=W)
+    bon[1] = np.interp(np.arange(W), bon_floor_x, bon_floor_y, period=W)
+    bon = ((bon + 0.5) / H - 0.5) * np.pi
+    return bon
 
 
 def sort_xy_filter_unique(xs, ys, y_small_first=True):

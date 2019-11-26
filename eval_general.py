@@ -7,7 +7,37 @@ from tqdm import tqdm
 from shapely.geometry import Polygon
 
 from eval_cuboid import prepare_gtdt_pairs
+from dataset import cor_2_1d
 from misc import post_proc
+
+
+def layout_2_depth(cor_id, h, w):
+    # Up -pi/2,  Down pi/2
+    vc, vf = cor_2_1d(cor_id, h, w)
+    vc = vc[None, :]  # [1, w]
+    vf = vf[None, :]  # [1, w]
+    assert (vc > 0).sum() == 0
+    assert (vf < 0).sum() == 0
+
+    # Per-pixel
+    vs = ((np.arange(h) + 0.5) / h - 0.5) * np.pi
+    vs = np.repeat(vs[:, None], w, axis=1)  # [h, w]
+    depth = np.zeros([h, w], np.float32)    # [h, w]
+
+    # Floor depth
+    floor_d = 1.6
+    depth[vs > vf] = floor_d
+
+    # Ceiling depth
+    ceil_d = np.abs(1.6 / np.tan(vf) * np.tan(vc))  # [1, w]
+    ceil_d = np.repeat(ceil_d, h, axis=0)           # [h, w]
+    depth[vs < vc] = ceil_d[vs < vc]
+
+    # Wall depth
+    wall_d = np.abs(1.6 / np.tan(vf) * np.tan(vs))  # [h, w]
+    depth[depth == 0] = wall_d[depth == 0]
+
+    return depth
 
 
 def test_general(dt_cor_id, gt_cor_id, w, h, losses):
@@ -29,20 +59,28 @@ def test_general(dt_cor_id, gt_cor_id, w, h, losses):
         print('Skip ground truth invalid (%s)' % gt_path)
         return
 
+    # 2D IoU
     area_dt = dt_poly.area
     area_gt = gt_poly.area
     area_inter = dt_poly.intersection(gt_poly).area
-
     iou2d = area_inter / (area_gt + area_dt - area_inter)
+
+    # 3D IoU
     cch_dt = post_proc.get_z1(dt_floor_coor[:, 1], dt_ceil_coor[:, 1], ch, 512)
     cch_gt = post_proc.get_z1(gt_floor_coor[:, 1], gt_ceil_coor[:, 1], ch, 512)
-
     h_dt = abs(cch_dt.mean() - ch)
     h_gt = abs(cch_gt.mean() - ch)
     area3d_inter = area_inter * min(h_dt, h_gt)
     area3d_pred = area_dt * h_dt
     area3d_gt = area_gt * h_gt
     iou3d = area3d_inter / (area3d_pred + area3d_gt - area3d_inter)
+
+    # rmse & delta_1
+    dt_layout_depth = layout_2_depth(dt_cor_id, h, w)
+    gt_layout_depth = layout_2_depth(gt_cor_id, h, w)
+    rmse = ((gt_layout_depth - dt_layout_depth)**2).mean() ** 0.5
+    thres = np.maximum(gt_layout_depth/dt_layout_depth, dt_layout_depth/gt_layout_depth)
+    delta_1 = (thres < 1.25).mean()
 
     # Add a result
     n_corners = len(gt_floor_coor)
@@ -54,8 +92,12 @@ def test_general(dt_cor_id, gt_cor_id, w, h, losses):
         n_corners = '10+'
     losses[n_corners]['2DIoU'].append(iou2d)
     losses[n_corners]['3DIoU'].append(iou3d)
+    losses[n_corners]['rmse'].append(rmse)
+    losses[n_corners]['delta_1'].append(delta_1)
     losses['overall']['2DIoU'].append(iou2d)
     losses['overall']['3DIoU'].append(iou3d)
+    losses['overall']['rmse'].append(rmse)
+    losses['overall']['delta_1'].append(delta_1)
 
 
 if __name__ == '__main__':
@@ -78,7 +120,7 @@ if __name__ == '__main__':
 
     # Testing
     losses = dict([
-        (n_corner, {'2DIoU': [], '3DIoU': []})
+        (n_corner, {'2DIoU': [], '3DIoU': [], 'rmse': [], 'delta_1': []})
         for n_corner in ['4', '6', '8', '10+', 'odd', 'overall']
     ])
     for gt_path, dt_path in tqdm(gtdt_pairs, desc='Testing'):
@@ -98,12 +140,12 @@ if __name__ == '__main__':
     for k, result in losses.items():
         iou2d = np.array(result['2DIoU'])
         iou3d = np.array(result['3DIoU'])
+        rmse = np.array(result['rmse'])
+        delta_1 = np.array(result['delta_1'])
         if len(iou2d) == 0:
             continue
         print('GT #Corners: %s  (%d instances)' % (k, len(iou2d)))
-        print('    2DIoU: %.2f' % (
-            iou2d.mean() * 100,
-        ))
-        print('    3DIoU: %.2f' % (
-            iou3d.mean() * 100,
-        ))
+        print('    2DIoU : %.2f' % (iou2d.mean() * 100))
+        print('    3DIoU : %.2f' % (iou3d.mean() * 100))
+        print('    RMSE  : %.2f' % (rmse.mean()))
+        print('    delta1: %.2f' % (delta_1.mean()))
