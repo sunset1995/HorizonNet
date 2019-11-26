@@ -13,6 +13,8 @@ from torch.utils.data import DataLoader
 from model import HorizonNet, ENCODER_RESNET, ENCODER_DENSENET
 from dataset import PanoCorBonDataset
 from misc.utils import group_weight, adjust_learning_rate, save_model, load_trained_model
+from inference import inference
+from eval_general import test_general
 
 
 def feed_forward(net, x, y_bon, y_cor):
@@ -25,14 +27,6 @@ def feed_forward(net, x, y_bon, y_cor):
     losses['bon'] = F.l1_loss(y_bon_, y_bon)
     losses['cor'] = F.binary_cross_entropy_with_logits(y_cor_, y_cor)
     losses['total'] = losses['bon'] + losses['cor']
-
-    # For model selection
-    with torch.no_grad():
-        nobrain_baseline_bon = np.pi / 4
-        nobrain_baseline_cor = 0.2
-        score_bon = 1 - (y_bon_ - y_bon).abs().mean() / nobrain_baseline_bon
-        score_cor = 1 - (torch.sigmoid(y_cor_) - y_cor).abs().mean() / nobrain_baseline_cor
-        losses['score'] = (score_bon + score_cor) / 2
 
     return losses
 
@@ -121,13 +115,9 @@ if __name__ == '__main__':
                               worker_init_fn=lambda x: np.random.seed())
     if args.valid_root_dir:
         dataset_valid = PanoCorBonDataset(
-            root_dir=args.valid_root_dir,
+            root_dir=args.valid_root_dir, return_cor=True,
             flip=False, rotate=False, gamma=False,
             stretch=False)
-        loader_valid = DataLoader(dataset_valid, args.batch_size_valid,
-                                  shuffle=False, drop_last=False,
-                                  num_workers=args.num_workers,
-                                  pin_memory=not args.no_cuda)
 
     # Create model
     if args.pth is not None:
@@ -207,13 +197,34 @@ if __name__ == '__main__':
         # Valid phase
         net.eval()
         if args.valid_root_dir:
-            iterator_valid = iter(loader_valid)
             valid_loss = {}
-            for _ in trange(len(loader_valid),
+            for jth in trange(len(dataset_valid),
                             desc='Valid ep%d' % ith_epoch, position=2):
-                x, y_bon, y_cor = next(iterator_valid)
+                x, y_bon, y_cor, gt_cor_id = dataset_valid[jth]
+                x, y_bon, y_cor = x[None], y_bon[None], y_cor[None]
                 with torch.no_grad():
                     losses = feed_forward(net, x, y_bon, y_cor)
+
+                    # True eval result instead of training objective
+                    true_eval = dict([
+                        (n_corner, {'2DIoU': [], '3DIoU': [], 'rmse': [], 'delta_1': []})
+                        for n_corner in ['4', '6', '8', '10+', 'odd', 'overall']
+                    ])
+                    try:
+                        dt_cor_id = inference(net, x, device, force_cuboid=False)[0]
+                        dt_cor_id[:, 0] *= 1024
+                        dt_cor_id[:, 1] *= 512
+                    except:
+                        dt_cor_id = np.array([
+                            [k//2 * 1024, 256 - ((k%2)*2 - 1) * 120]
+                            for k in range(8)
+                        ])
+                    test_general(dt_cor_id, gt_cor_id, 1024, 512, true_eval)
+                    losses['2DIoU'] = torch.FloatTensor([true_eval['overall']['2DIoU']])
+                    losses['3DIoU'] = torch.FloatTensor([true_eval['overall']['3DIoU']])
+                    losses['rmse'] = torch.FloatTensor([true_eval['overall']['rmse']])
+                    losses['delta_1'] = torch.FloatTensor([true_eval['overall']['delta_1']])
+
                 for k, v in losses.items():
                     valid_loss[k] = valid_loss.get(k, 0) + v.item() * x.size(0)
 
@@ -222,8 +233,10 @@ if __name__ == '__main__':
                 tb_writer.add_scalar(k, v / len(dataset_valid), ith_epoch)
 
             # Save best validation loss model
-            if valid_loss['score'] > args.best_valid_score:
-                args.best_valid_score = valid_loss['score']
+            now_valid_score = valid_loss['3DIoU'] / len(dataset_valid)
+            print('Ep%3d %.4f vs. Best %.4f' % (ith_epoch, now_valid_score, args.best_valid_score))
+            if now_valid_score > args.best_valid_score:
+                args.best_valid_score = now_valid_score
                 save_model(net,
                            os.path.join(args.ckpt, args.id, 'best_valid.pth'),
                            args)
