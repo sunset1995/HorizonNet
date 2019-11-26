@@ -155,7 +155,7 @@ if __name__ == '__main__':
     # Post-processing realted
     parser.add_argument('--r', default=0.05, type=float)
     parser.add_argument('--min_v', default=None, type=float)
-    parser.add_argument('--relax_cuboid', action='store_true')
+    parser.add_argument('--force_cuboid', action='store_true')
     # Misc arguments
     parser.add_argument('--no_cuda', action='store_true',
                         help='disable cuda')
@@ -194,7 +194,7 @@ if __name__ == '__main__':
             cor_id, z0, z1, vis_out = inference(net, x, device,
                                                 args.flip, args.rotate,
                                                 args.visualize,
-                                                not args.relax_cuboid,
+                                                args.force_cuboid,
                                                 args.min_v, args.r)
 
             # Output result
