@@ -1,13 +1,11 @@
 # HorizonNet
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/horizonnet-learning-room-layout-with-1d/3d-room-layouts-from-a-single-rgb-panorama)](https://paperswithcode.com/sota/3d-room-layouts-from-a-single-rgb-panorama?p=horizonnet-learning-room-layout-with-1d)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/horizonnet-learning-room-layout-with-1d/3d-room-layouts-from-a-single-rgb-panorama-1)](https://paperswithcode.com/sota/3d-room-layouts-from-a-single-rgb-panorama-1?p=horizonnet-learning-room-layout-with-1d)
-
 This is the implementation of our CVPR'19 "[
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
 
-**News, June 15** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)  
-**News, Aug 19** - Report results on [Structured3D dataset](https://structured3d-dataset.org/) [[:bar_chart: See st3d report]](README_ST3D.md).
+**News, June 15, 2019** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)\
+**News, Aug 19, 2019** - Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).
+**News, Nov 27, 2019** - Report results on [MatterportLayout dataset](https://arxiv.org/abs/1910.04099). (See [the report :clipboard: on MP3D](README_MP3D.md)).
 
 ![](assets/teaser.jpg)
 
@@ -37,7 +35,8 @@ This repo is a **pure python** implementation that you can:
 - open3d>=0.7 (for layout 3D viewer)
 
 
-## Download Dataset
+### Download
+#### Dataset
 - PanoContext/Stanford2D3D Dataset
     - [Download preprocessed pano/s2d3d](https://drive.google.com/open?id=1e-MuWRx3T4LJ8Bu4Dc0tKcSHF9Lk_66C) for training/validation/testing
         - Put all of them under `data` directory so you should get:
@@ -53,17 +52,23 @@ This repo is a **pure python** implementation that you can:
         - `test`, `train`, `valid` are processed from [LayoutNet's cuboid dataset](https://github.com/zouchuhang/LayoutNet).
         - `finetune_general` is re-annotated by us from `train` and `valid`. It contains  65 general shaped rooms.
 - Structured3D Dataset
-    - Please contact [Structured3D](https://structured3d-dataset.org/) to get the datas.
-    - Following [this](https://github.com/sunset1995/HorizonNet/blob/master/README_ST3D.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
+    - See [the tutorial](https://github.com/sunset1995/HorizonNet/blob/master/README_ST3D.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
+- MatterportLayout Dataset
+    - See [the tutorial](https://github.com/sunset1995/HorizonNet/blob/master/README_MP3D.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
 
 
-## Download Pretrained Models
+#### Pretrained Models
 - [resnet50_rnn__panos2d3d.pth](https://drive.google.com/open?id=1aieMd61b-3BoOeTRv2pKu9yTk5zEinn0)
     - Trained on PanoContext/Stanford2d3d 817 pano images.
-    - Trained for 300 epoch.
+    - Trained for 300 epoch
 - [resnet50_rnn__st3d.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO)
     - Trained on Structured3D 18362 pano images with setting of original furniture and lighting.
     - Trained for 50 epoch.
+    - Select 50th epoch according to loss function on validation set.
+- [resnet50_rnn__mp3d.pth](https://drive.google.com/open?id=1uEEhPVw6VbjwW3lO4btb8zExV8NqojTB)
+    - Trained on MatterportLayout 1650 pano images.
+    - Trained for 300 epoch.
+    - Select 242nd epoch according to 3DIoU on validation set.
 
 
 ## Inference on your images
@@ -74,7 +79,7 @@ In below explaination, I will use `assets/demo.png` for example.
 
 ### 1. Pre-processing (Align camera rotation pose)
 - **Execution**: Pre-process the above `assets/demo.png` by firing below command.
-    ```
+    ```bash
     python preprocess.py --img_glob assets/demo.png --output_dir assets/preprocessed/
     ```
     - `--img_glob` telling the path to your 360 room image(s).
@@ -96,27 +101,25 @@ In below explaination, I will use `assets/demo.png` for example.
 
 ### 2. Estimating layout with HorizonNet
 - **Execution**: Predict the layout from above aligned image and line segments by firing below command.
-    ```
-    python inference.py --pth ckpt/resnet50_rnn__st3d.pth --img_glob assets/preprocessed/demo_aligned_rgb.png --output_dir assets/inferenced --visualize --relax_cuboid
+    ```bash
+    python inference.py --pth ckpt/resnet50_rnn__mp3d.pth --img_glob assets/preprocessed/demo_aligned_rgb.png --output_dir assets/inferenced --visualize
     ```
     - `--pth` path to the trained model.
     - `--img_glob` path to the preprocessed image.
     - `--output_dir` path to the directory to dump results.
     - `--visualize` optinoal for visualizing model raw outputs.
-    - `--relax_cuboid`
-        - If **Model trained on cuboid only** :point_right: do NOT add `--relax_cuboid` to force outputing cuboid
-        - If **Model trained on general shaped** :point_right: ALWAYS add `--relax_cuboid`
+    - `--force_cuboid` add this option if you want to estimate cuboid layout (4 walls).
 - **Outputs**: You will get results like below and prefix with source image basename.
     - The 1d representation are visualized under file name `[SOURCE BASENAME].raw.png`
     - The extracted corners of the layout `[SOURCE BASENAME].json`
         ```
-        {"z0": 50.0, "z1": -53.993988037109375, "uv": [[0.0146484375, 0.3008330762386322], [0.0146484375, 0.7089354991912842], [0.007335239555686712, 0.38581281900405884], [0.007335239555686712, 0.6204522848129272], [0.0517578125, 0.3912762403488159], [0.0517578125, 0.6146637797355652], [0.4485706090927124, 0.3936861753463745], [0.4485706090927124, 0.6121071577072144], [0.5978592038154602, 0.4077087640762329], [0.5978592038154602, 0.597193717956543], [0.8074917793273926, 0.35766440629959106], [0.8074917793273926, 0.6501006484031677], [0.8803366422653198, 0.2525349259376526], [0.8803366422653198, 0.7577382922172546], [0.925480306148529, 0.3167843818664551], [0.925480306148529, 0.6925708055496216]]}
+        {"z0": 50.0, "z1": -59.03114700317383, "uv": [[0.029913906008005142, 0.2996523082256317], [0.029913906008005142, 0.7240479588508606], [0.015625, 0.3819984495639801], [0.015625, 0.6348703503608704], [0.056027885526418686, 0.3881891965866089], [0.056027885526418686, 0.6278984546661377], [0.4480381906032562, 0.3970482349395752], [0.4480381906032562, 0.6178648471832275], [0.5995567440986633, 0.41122356057167053], [0.5995567440986633, 0.601679801940918], [0.8094607591629028, 0.36505699157714844], [0.8094607591629028, 0.6537724137306213], [0.8815288543701172, 0.2661873996257782], [0.8815288543701172, 0.7582473754882812], [0.9189453125, 0.31678876280784607], [0.9189453125, 0.7060701847076416]]}
         ```
 
 
 ### 3. Layout 3D Viewer
 - **Execution**: Visualizing the predicted layout in 3D using points cloud.
-    ```
+    ```bash
     python layout_viewer.py --img assets/preprocessed/demo_aligned_rgb.png --layout assets/inferenced/demo_aligned_rgb.json --ignore_ceiling
     ```
     - `--img` path to preprocessed image
@@ -128,13 +131,13 @@ In below explaination, I will use `assets/demo.png` for example.
 
 
 ## Your own dataset
-See [tutorial](README_PREPARE_DATASET.md) on how to prepare it.  
+See [tutorial](README_PREPARE_DATASET.md) on how to prepare it.
 
 
 ## Training
-To train on a dataset, see `python train.py -h` for detailed options explaination.  
+To train on a dataset, see `python train.py -h` for detailed options explaination.\
 Example:
-```
+```bash
 python train.py --id resnet50_rnn
 ```
 - Important arguments:
@@ -147,34 +150,33 @@ python train.py --id resnet50_rnn
     - `--no_rnn` whether to remove rnn (default: False)
     - `--train_root_dir` root directory to training dataset. (default: `data/layoutnet_dataset/train`)
     - `--valid_root_dir` root directory to validation dataset. (default: `data/layoutnet_dataset/valid/`)
-    - `--batch_size_train` training mini-batch size (default: 8)
+        - If giveng, the epoch with best 3DIoU on validation set will be saved as `{ckpt}/{id}/best_valid.pth`
+    - `--batch_size_train` training mini-batch size (default: 4)
     - `--epochs` epochs to train (default: 300)
     - `--lr` learning rate (default: 0.0001)
 
 
 ## Quantitative Evaluation - Cuboid Layout
 To evaluate on PanoContext/Stanford2d3d dataset, first running the cuboid trained model for all testing images:
-```
-python inference.py --pth ckpt/resnet50_rnn__panos2d3d.pth --img_glob "data/layoutnet_dataset/test/img/*" --output_dir tmp
+```bash
+python inference.py --pth ckpt/resnet50_rnn__panos2d3d.pth --img_glob "data/layoutnet_dataset/test/img/*" --output_dir output/panos2d3d/resnet50_rnn/ --force_cuboid
 ```
 - `--img_glob` shell-style wildcards for all testing images.
 - `--output_dir` path to the directory to dump results.
+- `--force_cuboid` enfoce output cuboid layout (4 walls) or the PE and CE can't be evaluated.
 
 To get the quantitative result:
-```
-python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/*txt"
+```bash
+python eval_cuboid.py --dt_glob "output/panos2d3d/resnet50_rnn/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/*txt"
 ```
 - `--dt_glob` shell-style wildcards for all the model estimation.
 - `--gt_glob` shell-style wildcards for all the ground truth.
-Replace `"tmp/*json"`
-- with `"tmp/pano*json"` for evaluate on PaonContext only
-- with `"tmp/camera*json"` for evaluate on Stanford2D3D only
 
-If you want to:  
-- just evaluate PanoContext `python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/pano*txt"`
-- just evaluate Stanford2d3d `python eval_cuboid.py --dt_glob "tmp/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/camera*txt"`
+If you want to:
+- just evaluate PanoContext only `python eval_cuboid.py --dt_glob "output/panos2d3d/resnet50_rnn/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/pano*txt"`
+- just evaluate Stanford2d3d only `python eval_cuboid.py --dt_glob "output/panos2d3d/resnet50_rnn/*json" --gt_glob "data/layoutnet_dataset/test/label_cor/camera*txt"`
 
-:clipboard: The quantitative result for the pretrained model is shown below:
+:clipboard: The quantitative result for the released `resnet50_rnn__panos2d3d.pth` is shown below:
 
 | Testing Dataset | 3D IoU(%) | Corner error(%) | Pixel error(%) |
 | :-------------: | :-------: | :------: | :--------------: |
@@ -183,8 +185,9 @@ If you want to:
 | All             | `83.87` | `0.67` | `2.08` |
 
 
-## Quantitative Evaluation - Genral Layout
-[[:bar_chart: See st3d report]](README_ST3D.md) for more detail.
+## Quantitative Evaluation - General Layout
+- See [the report :clipboard: on ST3D](README_ST3D.md) for more detail.
+- See [the report :clipboard: on MP3D](README_MP3D.md) for more detail.
 
 
 ## TODO
@@ -199,12 +202,17 @@ If you want to:
 ## Citation
 Please cite our paper for any purpose of usage.
 ```
-@inproceedings{sun2019horizonnet,
-  title={Horizonnet: Learning room layout with 1d representation and pano stretch data augmentation},
-  author={Sun, Cheng and Hsiao, Chi-Wei and Sun, Min and Chen, Hwann-Tzong},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
-  pages={1047--1056},
-  year={2019}
+@inproceedings{SunHSC19,
+  author    = {Cheng Sun and
+               Chi{-}Wei Hsiao and
+               Min Sun and
+               Hwann{-}Tzong Chen},
+  title     = {HorizonNet: Learning Room Layout With 1D Representation and Pano Stretch
+               Data Augmentation},
+  booktitle = {{IEEE} Conference on Computer Vision and Pattern Recognition, {CVPR}
+               2019, Long Beach, CA, USA, June 16-20, 2019},
+  pages     = {1047--1056},
+  year      = {2019},
 }
 ```
 

@@ -96,40 +96,96 @@ References:
     ```
 
 ## Training
-**Work in progress**
-<!-- ```bash
-python train.py --train_root_dir data/st3d_train_full_raw_light/ --valid_root_dir data/st3d_valid_full_raw_light/ --id resnet50_rnn__st3d --lr 3e-4 --batch_size_train 24 --epochs 50
+```bash
+python train.py --train_root_dir data/mp3d_layout/train/ --valid_root_dir data/mp3d_layout/valid/ --id resnet50_rnn__mp3d --batch_size_train 4 --epochs 300 --lr 1e-4
 ```
-See `python train.py -h` for more detail or [README.md](https://github.com/sunset1995/HorizonNet/blob/master/README.md) for more detail.
+See `python train.py -h` or [README.md#training](https://github.com/sunset1995/HorizonNet#training) for more detail.
 
-Download the trained model: [resnet50_rnn__st3d.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO).
--->
+Download the trained model: [resnet50_rnn__mp3d.pth](https://drive.google.com/open?id=1uEEhPVw6VbjwW3lO4btb8zExV8NqojTB).
+- Trained on MatterportLayout 1650 pano images.
+- Trained for 300 epoch.
+- Select 242nd epoch according to 3DIoU on validation set.
+
+The loss and IoU plots on validation set during the training coarse:
+
+| `bon loss` | `cor loss` | `2D IoU` | `3D IoU` |
+| :------: | :------: | :----: | :----: |
+| ![](assets/mp3d/valid_bon.png) | ![](assets/mp3d/valid_cor.png) | ![](assets/mp3d/valid_2DIoU.png) | ![](assets/mp3d/valid_3DIoU.png) |
+
+Some observation and random thought about the training detail:
+- The `cor loss` look strange. It seems that the lowest `cor loss` appears at very first epoch. Could it be due to the imbalance or any difficulty in the multi task training (`bon loss` vs. `cor loss`)?
+- The `bon loss`, `2D IoU`, `3D IoU` keep going down during the progress. Maybe training more epochs can get even better result?
+- Take a closer look into the plot of `3D IoU`. The model can struggle for dozens of epochs but improve finally.
+    - `77.73%` on ep58, the next time better is `77.85%` on ep71
+    - `79.15%` on ep101, the next time better is `79.23%` on ep127
+    - The best appear on ep242 with `80.49%`
+- Maybe training for a very long epochs (say 1k epochs) and select the best on validation set along the way could be a better scheme.
 
 ## Testing
-**Work in progress**
-<!-- Generating layout for testing set:
+Generating layout for testing set:
 ```bash
-python inference.py --pth ckpt/resnet50_rnn__st3d.pth --img_glob "data/st3d_test_full_raw_light/img/*" --output_dir tmp/ --visualize
+python inference.py --pth ckpt/resnet50_rnn__mp3d.pth --img_glob "data/mp3d_layout/test/img/*" --output_dir output/mp3d/resnet50_rnn --visualize
 ```
 - `--output_dir`: a directory you want to dump the extracted layout
 - `--visualize`: visualize raw output (without post-processing) from HorizonNet.
 
 
-Quantitativly evaluate:
+## Quantitative evaluatation:
 ```bash
-python eval_general.py --dt_glob "./tmp/*json" --gt_glob "data/st3d_test_full_raw_light/label_cor/*"
-``` -->
+python eval_general.py --dt_glob "output/mp3d/resnet50_rnn/*json" --gt_glob "data/mp3d_layout/test/label_cor/*"
+```
 
-## Results
-**Work in progress**
-<!-- :clipboard: Below is the quantitative result on Structured3D testing set.
+:clipboard: Below is the quantitative result on MatterportLayout testing set.
 
-| # of corners | instances | 3D IoU | 2D IoU |
-| :----------: | :-------: | :----: | :----: |
-| 4            | 1067      | `94.14`  | `95.50` |
-| 6            | 290       | `90.34`  | `91.54` |
-| 8            | 130       | `87.98`  | `89.43` |
-| 10+          | 202       | `79.95`  | `81.10` |
-| overall      | 1693      | `91.31`  | `92.63` |
+| # of corners | instances |  3D IoU  | 2D IoU  | RMSE   | delta^1 |
+| :----------: | :-------: | :------: | :-----: | :----: | :----: |
+| 4            | 262       | `81.49`  | `84.22` | `0.18` | `0.95` |
+| 6            | 84        | `82.65`  | `84.88` | `0.19` | `0.96` |
+| 8            | 63        | `73.30`  | `75.19` | `0.29` | `0.94` |
+| 10+          | 49        | `68.50`  | `70.46` | `0.43` | `0.89` |
+| overall      | 458       | `79.19`  | `81.63` | `0.22` | `0.94` |
 
-#### More Visual Results -->
+- The `3D IoU` and `2D IoU` similar to official reported.
+- :exclamation: The `RMSE` and `delta^1` implementation is different from official.
+- It could be due to the different implementation of layout to depth (I hope not due to my bug).
+- I use below code to evaluate LayoutNetv2 (official released) with depth metric of my implementation. The results are:
+    - RMSE of my implementation
+        - LayoutNetv2: `0.28`
+        - `resnet50_rnn__mp3d.pth`: `0.22`
+    - delta^1 of my implementation
+        - LayoutNetv2: `0.90`
+        - `resnet50_rnn__mp3d.pth`: `0.94`
+
+```python
+import os
+import cv2
+import glob
+import numpy as np
+from tqdm import tqdm
+from scipy.io import loadmat
+from eval_general import layout_2_depth
+
+OFFICIAL_ROOT = '/home/sunset/Datasets/MatterportLayout/result_gen_depth/'
+GT_ROOT = '/home/sunset/Datasets/MatterportLayout/mp3d_layout/test/label_cor/'
+
+rmse_lst = []
+delta_1_lst = []
+for dt_path in tqdm(glob.glob(os.path.join(OFFICIAL_ROOT, '*mat'))):
+    dt_depth = loadmat(dt_path)['im_depth']
+    dt_depth = cv2.resize(dt_depth, (1024, 512))
+    k = os.path.split(dt_path)[-1][:-4]
+    gt_path = os.path.join(GT_ROOT, k + '.txt')
+    with open(gt_path) as f:
+        gt_cor_id = np.array([l.split() for l in f], np.float32)
+    gt_depth = layout_2_depth(gt_cor_id, 512, 1024)
+    gt_depth = gt_depth
+    dt_depth = dt_depth
+    rmse = ((gt_depth - dt_depth)**2).mean() ** 0.5
+    thres = np.maximum(gt_depth/dt_depth, dt_depth/gt_depth)
+    delta_1 = (thres < 1.25).mean()
+    rmse_lst.append(rmse)
+    delta_1_lst.append(delta_1)
+
+print('rmse', np.mean(rmse_lst))
+print('delta_1', np.mean(delta_1_lst))
+```

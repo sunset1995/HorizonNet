@@ -23,10 +23,12 @@ References:
 ```bash
 python train.py --train_root_dir data/st3d_train_full_raw_light/ --valid_root_dir data/st3d_valid_full_raw_light/ --id resnet50_rnn__st3d --lr 3e-4 --batch_size_train 24 --epochs 50
 ```
-See `python train.py -h` for more detail or [README.md](https://github.com/sunset1995/HorizonNet/blob/master/README.md) for more detail.
+See `python train.py -h` or [README.md#training](https://github.com/sunset1995/HorizonNet#training) for more detail.
 
 Download the trained model: [resnet50_rnn__st3d.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO).
-> The best selected model is epoch 50 which suggested that it still has the potential to improve by training longer.
+- Trained on Structured3D 18362 pano images with setting of original furniture and lighting.
+- Trained for 50 epoch.
+- Select 50th epoch according to loss function on validation set.
 
 ## Testing
 Generating layout for testing set:
@@ -37,12 +39,11 @@ python inference.py --pth ckpt/resnet50_rnn__st3d.pth --img_glob "data/st3d_test
 - `--visualize`: visualize raw output (without post-processing) from HorizonNet.
 
 
-Quantitativly evaluate:
+## Quantitative evaluatation:
 ```bash
 python eval_general.py --dt_glob "./output/st3d/resnet50_rnn/*json" --gt_glob "data/st3d_test_full_raw_light/label_cor/*"
 ```
 
-## Results
 :clipboard: Below is the quantitative result on Structured3D testing set.
 
 | # of corners | instances | 3D IoU | 2D IoU |
@@ -63,7 +64,7 @@ Four instances are skip by `eval_general.py` as the ground truth is self-interse
 | :--: | :--: | :--: | :--: |
 | ![](assets/scene_03327_315045.txt.png) | ![](assets/scene_03376_800900.txt.png) | ![](assets/scene_03399_337.txt.png) | ![](assets/scene_03478_2193.txt.png) |
 
-#### More Visual Results
+## Qualitative Results
 
 ##### From Structured3D testing set `scene_03300_[190736,190737,190738]`:
 ![](assets/result_scene_03300_190736.png)
