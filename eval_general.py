@@ -11,7 +11,7 @@ from dataset import cor_2_1d
 from misc import post_proc
 
 
-def layout_2_depth(cor_id, h, w):
+def layout_2_depth(cor_id, h, w, return_mask=False):
     # Convert corners to per-column boundary first
     # Up -pi/2,  Down pi/2
     vc, vf = cor_2_1d(cor_id, h, w)
@@ -48,6 +48,8 @@ def layout_2_depth(cor_id, h, w):
     depth[wall_mask] = wall_d[wall_mask]
 
     assert (depth == 0).sum() == 0
+    if return_mask:
+        return depth, floor_mask, ceil_mask, wall_mask
     return depth
 
 

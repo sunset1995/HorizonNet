@@ -73,7 +73,7 @@ def pano_connect_points(p1, p2, z=-50, w=1024, h=512):
     ps = (np.tan(us) * x1 - y1) / (vy - np.tan(us) * vx)
     cs = np.sqrt((x1 + ps * vx) ** 2 + (y1 + ps * vy) ** 2)
     vs = np.arctan2(z, cs)
-    coorys = v2coory(vs)
+    coorys = v2coory(vs, h)
 
     return np.stack([coorxs, coorys], axis=-1)
 
