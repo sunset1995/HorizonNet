@@ -130,7 +130,7 @@ python inference.py --pth ckpt/resnet50_rnn__mp3d.pth --img_glob "data/mp3d_layo
 - `--visualize`: visualize raw output (without post-processing) from HorizonNet.
 
 
-## Quantitative evaluatation:
+## Quantitative evaluatation
 ```bash
 python eval_general.py --dt_glob "output/mp3d/resnet50_rnn/*json" --gt_glob "data/mp3d_layout/test/label_cor/*"
 ```
