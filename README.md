@@ -4,8 +4,7 @@ This is the implementation of our CVPR'19 "[
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
 
 **News, June 15, 2019** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)\
-**News, Aug 19, 2019** - Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).\
-**News, Nov 27, 2019** - Report results on [MatterportLayout dataset](https://arxiv.org/abs/1910.04099). (See [the report :clipboard: on MP3D](README_MP3D.md)).
+**News, Aug 19, 2019** - Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).
 
 ![](assets/teaser.jpg)
 
@@ -53,8 +52,6 @@ This repo is a **pure python** implementation that you can:
         - `finetune_general` is re-annotated by us from `train` and `valid`. It contains  65 general shaped rooms.
 - Structured3D Dataset
     - See [the tutorial](https://github.com/sunset1995/HorizonNet/blob/master/README_ST3D.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
-- MatterportLayout Dataset
-    - See [the tutorial](https://github.com/sunset1995/HorizonNet/blob/master/README_MP3D.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
 
 
 #### Pretrained Models
@@ -65,10 +62,6 @@ This repo is a **pure python** implementation that you can:
     - Trained on Structured3D 18362 pano images with setting of original furniture and lighting.
     - Trained for 50 epoch.
     - Select 50th epoch according to loss function on validation set.
-- [resnet50_rnn__mp3d.pth](https://drive.google.com/open?id=1uEEhPVw6VbjwW3lO4btb8zExV8NqojTB)
-    - Trained on MatterportLayout 1650 pano images.
-    - Trained for 300 epoch.
-    - Select 242nd epoch according to 3DIoU on validation set.
 
 
 ## Inference on your images
