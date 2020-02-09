@@ -30,8 +30,10 @@ This repo is a **pure python** implementation that you can:
 - Pillow
 - tqdm
 - tensorboardX
-- opencv-python>=3.1 (for pre-processing)
+- opencv-python>=3.1 (for pre-processing) (also can't be too new, the latest opencv removed a key algorithm due to patent, 3.1.0.5 works. )
 - open3d>=0.7 (for layout 3D viewer)
+- shapely
+- torchvision
 
 
 ### Download
