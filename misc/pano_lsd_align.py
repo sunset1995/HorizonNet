@@ -247,31 +247,34 @@ def separatePano(panoImg, fov, x, y, imgSize=320):
 def lsdWrap(img, LSD=None, **kwargs):
     '''
     Opencv implementation of
-    Rafael Grompone von Gioi, Jérémie Jakubowicz, Jean-Michel Morel, and Gregory Randall,
-    LSD: a Line Segment Detector, Image Processing On Line, vol. 2012.
-    [Rafael12] http://www.ipol.im/pub/art/2012/gjmr-lsd/?utm_source=doi
+    Jin Han Lee, Sehyung Lee, Guoxuan Zhang, Jongwoo Lim, Wan Kyun Chung, and Il Hong Suh.
+    Outdoor place recognition in urban environments using straight lines. 
+    In 2014 IEEE International Conference on Robotics and Automation (ICRA),
+    pages 5550–5557. IEEE, 2014.
     @img
         input image
     @LSD
-        Constructing by cv2.createLineSegmentDetector
-        https://docs.opencv.org/3.0-beta/modules/imgproc/doc/feature_detection.html#linesegmentdetector
+	Constructing by cv2.ximgproc.createFastLineDetector
+	https://docs.opencv.org/master/df/ded/group__ximgproc__fast__line__detector.html
         if LSD is given, kwargs will be ignored
+        Replaced the previously used cv2.createLineSegmentDetector since it is completely 
+	removed by OpenCV (since 4.1.0)
     @kwargs
         is used to construct LSD
         work only if @LSD is not given
     '''
     if LSD is None:
-        LSD = cv2.createLineSegmentDetector(**kwargs)
+        LSD = cv2.ximgproc.createFastLineDetector(**kwargs)
 
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    lines, width, prec, nfa = LSD.detect(img)
+    lines = LSD.detect(img)
     if lines is None:
         return np.zeros_like(img), np.array([])
     edgeMap = LSD.drawSegments(np.zeros_like(img), lines)[..., -1]
     lines = np.squeeze(lines, 1)
-    edgeList = np.concatenate([lines, width, prec, nfa], 1)
+    edgeList = np.concatenate([lines], 1)
     return edgeMap, edgeList
 
 
@@ -831,7 +834,7 @@ def panoEdgeDetection(img, viewSize=320, qError=0.7, refineIter=3):
 
     sepScene = separatePano(img.copy(), fov, x, y, cutSize)
     edge = []
-    LSD = cv2.createLineSegmentDetector(_refine=cv2.LSD_REFINE_ADV, _quant=qError)
+    LSD = cv2.ximgproc.createFastLineDetector()
     for i, scene in enumerate(sepScene):
         edgeMap, edgeList = lsdWrap(scene['img'], LSD)
         edge.append({
