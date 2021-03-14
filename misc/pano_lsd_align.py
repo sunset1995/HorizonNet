@@ -13,6 +13,7 @@ import sys
 import numpy as np
 from scipy.ndimage import map_coordinates
 import cv2
+from pylsd import lsd
 
 
 def computeUVN(n, in_, planeID):
@@ -244,7 +245,7 @@ def separatePano(panoImg, fov, x, y, imgSize=320):
     return sepScene
 
 
-def lsdWrap(img, LSD=None, **kwargs):
+def lsdWrap(img):
     '''
     Opencv implementation of
     Rafael Grompone von Gioi, Jérémie Jakubowicz, Jean-Michel Morel, and Gregory Randall,
@@ -252,26 +253,20 @@ def lsdWrap(img, LSD=None, **kwargs):
     [Rafael12] http://www.ipol.im/pub/art/2012/gjmr-lsd/?utm_source=doi
     @img
         input image
-    @LSD
-        Constructing by cv2.createLineSegmentDetector
-        https://docs.opencv.org/3.0-beta/modules/imgproc/doc/feature_detection.html#linesegmentdetector
-        if LSD is given, kwargs will be ignored
-    @kwargs
-        is used to construct LSD
-        work only if @LSD is not given
     '''
-    if LSD is None:
-        LSD = cv2.createLineSegmentDetector(**kwargs)
-
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    lines, width, prec, nfa = LSD.detect(img)
+    lines = lsd(img, quant=0.7)
     if lines is None:
         return np.zeros_like(img), np.array([])
-    edgeMap = LSD.drawSegments(np.zeros_like(img), lines)[..., -1]
-    lines = np.squeeze(lines, 1)
-    edgeList = np.concatenate([lines, width, prec, nfa], 1)
+    edgeMap = np.zeros_like(img)
+    for i in range(lines.shape[0]):
+        pt1 = (int(lines[i, 0]), int(lines[i, 1]))
+        pt2 = (int(lines[i, 2]), int(lines[i, 3]))
+        width = lines[i, 4]
+        cv2.line(edgeMap, pt1, pt2, 255, int(np.ceil(width / 2)))
+    edgeList = np.concatenate([lines, np.ones_like(lines[:, :2])], 1)
     return edgeMap, edgeList
 
 
@@ -831,9 +826,8 @@ def panoEdgeDetection(img, viewSize=320, qError=0.7, refineIter=3):
 
     sepScene = separatePano(img.copy(), fov, x, y, cutSize)
     edge = []
-    LSD = cv2.createLineSegmentDetector(_refine=cv2.LSD_REFINE_ADV, _quant=qError)
     for i, scene in enumerate(sepScene):
-        edgeMap, edgeList = lsdWrap(scene['img'], LSD)
+        edgeMap, edgeList = lsdWrap(scene['img'])
         edge.append({
             'img': edgeMap,
             'edgeLst': edgeList,
