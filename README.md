@@ -3,8 +3,9 @@
 This is the implementation of our CVPR'19 "[
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
 
+**News, Mar. 14, 2021** - (1) Use mesh instead of point cloud as layout viewer. (2) Update lsd detector dependency.\
 **News, June 15, 2019** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)\
-**News, Aug 19, 2019** - Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).
+**News, Aug. 19, 2019** - Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).
 
 ![](assets/teaser.jpg)
 
@@ -30,7 +31,8 @@ This repo is a **pure python** implementation that you can:
 - Pillow
 - tqdm
 - tensorboardX
-- opencv-python>=3.1 (for pre-processing) (also can't be too new, the latest opencv removed a key algorithm due to patent, 3.1.0.5 works. )
+- opencv-python>=3.1 (for pre-processing)
+- pylsd-nova
 - open3d>=0.7 (for layout 3D viewer)
 - shapely
 - torchvision
