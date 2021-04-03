@@ -3,6 +3,7 @@
 This is the implementation of our CVPR'19 "[
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
 
+**News, April 3, 2021** - Check out our new project [HoHoNet](https://github.com/sunset1995/HoHoNet) on this task and more!\
 **News, Mar. 14, 2021** - (1) Use mesh instead of point cloud as layout viewer. (2) Update lsd detector dependency.\
 **News, June 15, 2019** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)\
 **News, Aug. 19, 2019** - Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).
@@ -197,7 +198,6 @@ If you want to:
 
 
 ## Citation
-Please cite our paper for any purpose of usage.
 ```
 @inproceedings{SunHSC19,
   author    = {Cheng Sun and
