@@ -3,40 +3,44 @@
 This is the implementation of our CVPR'19 "[
 HorizonNet: Learning Room Layout with 1D Representation and Pano Stretch Data Augmentation](https://arxiv.org/abs/1901.03861)" ([project page](https://sunset1995.github.io/HorizonNet/)).
 
-**News, April 3, 2021** - Check out our new project [HoHoNet](https://github.com/sunset1995/HoHoNet) on this task and more!\
-**News, Mar. 14, 2021** - (1) Use mesh instead of point cloud as layout viewer. (2) Update lsd detector dependency.\
-**News, June 15, 2019** - Critical bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)\
-**News, Aug. 19, 2019** - Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).
-
 ![](assets/teaser.jpg)
 
+### Update
+- **2021.11.04: Report results on [Zillow Indoor dataset](https://github.com/zillow/zind). (See [the report :clipboard: on ZInD](README_ZInD.md)).**
+- 2021.04.03: Check out our new project [HoHoNet](https://github.com/sunset1995/HoHoNet) on this task and more!
+- 2021.03.14: (1) Use mesh instead of point cloud as layout viewer. (2) Update lsd detector dependency.
+- 2019.08.19: Report results on [Structured3D dataset](https://structured3d-dataset.org/). (See [the report :clipboard: on ST3D](README_ST3D.md)).
+- 2019.06.15: Bug fix for general layout (`dataset.py`, `inference.py` and `misc/post_proc.py`)
+
+### Feature
 This repo is a **pure python** implementation that you can:
 - **Inference on your images** to get cuboid or general shaped room layout
 - **3D layout viewer**
-- **Correct pose** for your panorama images
-- **Pano Stretch Augmentation** copy and paste to apply on your own task
-- **Quantitative evaluatation** (3D IoU, Corner Error, Pixel Error)
-    - cuboid shape
-    - general shape
+- **Correct rotation pose** to ensure manhattan alignment
+- **Pano stretch augmentation** copy and paste to apply on your own task
+- **Quantitative evaluatation** of 2D IoU, 3D IoU, Corner Error, Pixel Error of cuboid/general shape
 - **Your own dataset** preparation and training
 
-**Method Pipeline overview**:
+### Method overview
 ![](assets/pipeline.jpg)
 
-## Requirements
-- Python 3
-- pytorch>=1.0.0
-- numpy
-- scipy
-- sklearn
-- Pillow
-- tqdm
-- tensorboardX
-- opencv-python>=3.1 (for pre-processing)
-- pylsd-nova
-- open3d>=0.7 (for layout 3D viewer)
-- shapely
-- torchvision
+### Installation
+Pytorch installation is machine dependent, please install the correct version for your machine. The tested version is pytorch 1.8.1 with python 3.7.6.
+
+<details>
+  <summary> Dependencies (click to expand) </summary>
+
+   - numpy
+   - scipy
+   - sklearn
+   - Pillow
+   - tqdm
+   - tensorboardX
+   - opencv-python>=3.1 (for pre-processing)
+   - pylsd-nova
+   - open3d>=0.7 (for layout 3D viewer)
+   - shapely
+</details>
 
 
 ### Download
@@ -57,6 +61,8 @@ This repo is a **pure python** implementation that you can:
         - `finetune_general` is re-annotated by us from `train` and `valid`. It contains  65 general shaped rooms.
 - Structured3D Dataset
     - See [the tutorial](https://github.com/sunset1995/HorizonNet/blob/master/README_ST3D.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
+- Zillow Indoor Dataset
+    - See [the tutorial](https://github.com/sunset1995/HorizonNet/blob/master/README_ZInD.md#dataset-preparation) to prepare training/validation/testing for HorizonNet.
 
 
 #### Pretrained Models
@@ -64,9 +70,13 @@ This repo is a **pure python** implementation that you can:
     - Trained on PanoContext/Stanford2d3d 817 pano images.
     - Trained for 300 epoch
 - [resnet50_rnn__st3d.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO)
-    - Trained on Structured3D 18362 pano images with setting of original furniture and lighting.
+    - Trained on Structured3D 18362 pano images
+    - Data setup: original furniture and lighting.
     - Trained for 50 epoch.
-    - Select 50th epoch according to loss function on validation set.
+- [resnet50_rnn__zind.pth](https://drive.google.com/open?id=1FrMdk7Z4_sTZOOW65Ek77WbjiDbV98uJ)
+    - Trained on Zillow Indoor 20077 pano images.
+    - Data setup: `layout_visible`, `is_primary`, `is_inside`, `is_ceiling_flat`.
+    - Trained for 50 epoch.
 
 
 ## Inference on your images
