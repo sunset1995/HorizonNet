@@ -217,7 +217,7 @@ if __name__ == '__main__':
                         for n_corner in ['4', '6', '8', '10+', 'odd', 'overall']
                     ])
                     try:
-                        dt_cor_id = inference(net, x, device, force_cuboid=False)[0]
+                        dt_cor_id = inference(net, x, device, force_raw=True)[0]
                         dt_cor_id[:, 0] *= 1024
                         dt_cor_id[:, 1] *= 512
                     except:
