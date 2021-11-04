@@ -88,6 +88,8 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False,
         vis_out = None
 
     y_bon_ = (y_bon_[0] / np.pi + 0.5) * H - 0.5
+    y_bon_[0] = np.clip(y_bon_[0], 1, H/2-1)
+    y_bon_[1] = np.clip(y_bon_[1], H/2+1, H-2)
     y_cor_ = y_cor_[0, 0]
 
     # Init floor/ceil plane
