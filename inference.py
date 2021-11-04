@@ -63,7 +63,7 @@ def augment_undo(x_imgs_augmented, aug_type):
 
 
 def inference(net, x, device, flip=False, rotate=[], visualize=False,
-              force_cuboid=True, min_v=None, r=0.05):
+              force_cuboid=False, force_raw=False, min_v=None, r=0.05):
     '''
     net   : the trained HorizonNet
     x     : tensor in shape [1, 3, 512, 1024]
@@ -94,28 +94,34 @@ def inference(net, x, device, flip=False, rotate=[], visualize=False,
     z0 = 50
     _, z1 = post_proc.np_refine_by_fix_z(*y_bon_, z0)
 
-    # Detech wall-wall peaks
-    if min_v is None:
-        min_v = 0 if force_cuboid else 0.05
-    r = int(round(W * r / 2))
-    N = 4 if force_cuboid else None
-    xs_ = find_N_peaks(y_cor_, r=r, min_v=min_v, N=N)[0]
+    if force_raw:
+        # Do not run post-processing, export raw polygon (1024*2 vertices) instead.
+        # [TODO] Current post-processing lead to bad results on complex layout.
+        cor = np.stack([np.arange(1024), y_bon_[0]], 1)
 
-    # Generate wall-walls
-    cor, xy_cor = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=force_cuboid)
-    if not force_cuboid:
-        # Check valid (for fear self-intersection)
-        xy2d = np.zeros((len(xy_cor), 2), np.float32)
-        for i in range(len(xy_cor)):
-            xy2d[i, xy_cor[i]['type']] = xy_cor[i]['val']
-            xy2d[i, xy_cor[i-1]['type']] = xy_cor[i-1]['val']
-        if not Polygon(xy2d).is_valid:
-            print(
-                'Fail to generate valid general layout!! '
-                'Generate cuboid as fallback.',
-                file=sys.stderr)
-            xs_ = find_N_peaks(y_cor_, r=r, min_v=0, N=4)[0]
-            cor, xy_cor = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=True)
+    else:
+        # Detech wall-wall peaks
+        if min_v is None:
+            min_v = 0 if force_cuboid else 0.05
+        r = int(round(W * r / 2))
+        N = 4 if force_cuboid else None
+        xs_ = find_N_peaks(y_cor_, r=r, min_v=min_v, N=N)[0]
+
+        # Generate wall-walls
+        cor, xy_cor = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=force_cuboid)
+        if not force_cuboid:
+            # Check valid (for fear self-intersection)
+            xy2d = np.zeros((len(xy_cor), 2), np.float32)
+            for i in range(len(xy_cor)):
+                xy2d[i, xy_cor[i]['type']] = xy_cor[i]['val']
+                xy2d[i, xy_cor[i-1]['type']] = xy_cor[i-1]['val']
+            if not Polygon(xy2d).is_valid:
+                print(
+                    'Fail to generate valid general layout!! '
+                    'Generate cuboid as fallback.',
+                    file=sys.stderr)
+                xs_ = find_N_peaks(y_cor_, r=r, min_v=0, N=4)[0]
+                cor, xy_cor = post_proc.gen_ww(xs_, y_bon_[0], z0, tol=abs(0.16 * z1 / 1.6), force_cuboid=True)
 
     # Expand with btn coory
     cor = np.hstack([cor, post_proc.infer_coory(cor[:, 1], z1 - z0, z0)[:, None]])
@@ -156,6 +162,7 @@ if __name__ == '__main__':
     parser.add_argument('--r', default=0.05, type=float)
     parser.add_argument('--min_v', default=None, type=float)
     parser.add_argument('--force_cuboid', action='store_true')
+    parser.add_argument('--force_raw', action='store_true')
     # Misc arguments
     parser.add_argument('--no_cuda', action='store_true',
                         help='disable cuda')
@@ -191,11 +198,12 @@ if __name__ == '__main__':
             x = torch.FloatTensor([img_ori / 255])
 
             # Inferenceing corners
-            cor_id, z0, z1, vis_out = inference(net, x, device,
-                                                args.flip, args.rotate,
-                                                args.visualize,
-                                                args.force_cuboid,
-                                                args.min_v, args.r)
+            cor_id, z0, z1, vis_out = inference(net=net, x=x, device=device,
+                                                flip=args.flip, rotate=args.rotate,
+                                                visualize=args.visualize,
+                                                force_cuboid=args.force_cuboid,
+                                                force_raw=args.force_raw,
+                                                min_v=args.min_v, r=args.r)
 
             # Output result
             with open(os.path.join(args.output_dir, k + '.json'), 'w') as f:
