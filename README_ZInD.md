@@ -21,7 +21,7 @@ python train.py --train_root_dir data/zind_horizonnet/train/ --valid_root_dir da
 ```
 See `python train.py -h` or [README.md#training](https://github.com/sunset1995/HorizonNet#training) for more detail.
 
-Download the trained model: [resnet50_rnn__zind.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO).
+Download the trained model: [resnet50_rnn__zind.pth](https://drive.google.com/open?id=1FrMdk7Z4_sTZOOW65Ek77WbjiDbV98uJ).
 - Trained on Zillow Indoor 20077 images with default data extraction setup.
 - Trained for 50 epoch.
 
