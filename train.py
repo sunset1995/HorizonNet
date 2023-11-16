@@ -158,6 +158,7 @@ if __name__ == '__main__':
         print(f'training augmentation dataset contains {len(loader_train_aug.dataset)} images!!!')
     else:
         train_batch_size = args.batch_size_train
+
     train_batch_size = args.batch_size_train
     
     dataset_train = PanoCorBonDataset(
@@ -302,18 +303,15 @@ if __name__ == '__main__':
                         (n_corner, {'2DIoU': [], '3DIoU': [], 'rmse': [], 'delta_1': []})
                         for n_corner in ['4', '6', '8', '10+', 'odd', 'overall']
                     ])
-                    dt_cor_id = inference(net, x, device, force_raw=True)[0]
-                    dt_cor_id[:, 0] *= 1024
-                    dt_cor_id[:, 1] *= 512
-                    # try:
-                    #     dt_cor_id = inference(net, x, device, force_raw=True)[0]
-                    #     dt_cor_id[:, 0] *= 1024
-                    #     dt_cor_id[:, 1] *= 512
-                    # except:
-                    #     dt_cor_id = np.array([
-                    #         [k//2 * 1024, 256 - ((k%2)*2 - 1) * 120]
-                    #         for k in range(8)
-                    #     ])
+                    try:
+                        dt_cor_id = inference(net, x, device, force_raw=True)[0]
+                        dt_cor_id[:, 0] *= 1024
+                        dt_cor_id[:, 1] *= 512
+                    except:
+                        dt_cor_id = np.array([
+                            [k//2 * 1024, 256 - ((k%2)*2 - 1) * 120]
+                            for k in range(8)
+                        ])
                     test_general(dt_cor_id, gt_cor_id, 1024, 512, true_eval)
                     losses['2DIoU'] = torch.FloatTensor([true_eval['overall']['2DIoU']])
                     losses['3DIoU'] = torch.FloatTensor([true_eval['overall']['3DIoU']])
@@ -347,13 +345,6 @@ if __name__ == '__main__':
                 save_dict['backbone'] = getattr(net, 'backbone', None)
 
             save_checkpoint(save_dict, is_best, os.path.join(args.ckpt, args.id), ith_epoch)
-
-            '''if now_valid_score > args.best_valid_score:
-                args.best_valid_score = now_valid_score
-                state_dict = net.module.state_dict() if isinstance(net, nn.DataParallel) else net.state_dict()
-                save_model(state_dict,
-                           os.path.join(args.ckpt, args.id, 'best_valid.pth'),
-                           args)'''
 
         # Periodically save model
         if ith_epoch % args.save_every == 0:
