@@ -106,7 +106,7 @@ if __name__ == '__main__':
                         help='epochs to train')
     parser.add_argument('--optim', default='Adam',
                         help='optimizer to use. only support SGD and Adam')
-    parser.add_argument('--lr', default=3*1e-4, type=float,
+    parser.add_argument('--lr', default=1e-4, type=float,
                         help='learning rate')
     parser.add_argument('--lr_pow', default=0.9, type=float,
                         help='power in poly to drop LR')
