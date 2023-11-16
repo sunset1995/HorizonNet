@@ -162,6 +162,8 @@ python train.py --id resnet50_rnn
     - `--batch_size_train` training mini-batch size (default: 4)
     - `--epochs` epochs to train (default: 300)
     - `--lr` learning rate (default: 0.0001)
+    - `--device` set CUDA enabled device using device id (not to be used if multi_gpu is used)
+    - `--multi_gpu` enable parallel computing on all available GPUs
 
 
 ## Quantitative Evaluation - Cuboid Layout
