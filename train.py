@@ -3,29 +3,56 @@ import argparse
 import numpy as np
 from tqdm import trange
 from tensorboardX import SummaryWriter
+import shutil 
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler, autocast
 
 from model import HorizonNet, ENCODER_RESNET, ENCODER_DENSENET
 from dataset import PanoCorBonDataset
-from misc.utils import group_weight, adjust_learning_rate, save_model, load_trained_model
+from misc.utils import adjust_learning_rate, save_model, load_trained_model
 from inference import inference
 from eval_general import test_general
 
+class AugDataLoader():
+    def __init__(self,aug_loader) -> None:
+        self.aug_loader = aug_loader
+        self.iter_loader = iter(self.aug_loader)
+    
+    def get_data(self):
+        try:
+            return next(self.iter_loader)
+        except:
+            self.iter_loader = iter(self.aug_loader)
+            return next(self.iter_loader)
+        
+def save_checkpoint(state, is_best, checkpoint_dir, epoch):
+    filename = os.path.join(checkpoint_dir, 'checkpoint.pth.tar')
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, os.path.join(checkpoint_dir, f'best_model_{epoch}.pth.tar'))
+
+def flatten_rnn_parameters(model):
+    for module in model.modules():
+        if isinstance(module, nn.RNNBase):  # Checks for all types of RNN layers
+            module.flatten_parameters()
 
 def feed_forward(net, x, y_bon, y_cor):
+    flatten_rnn_parameters(net.module if hasattr(net, 'module') else net)
     x = x.to(device)
     y_bon = y_bon.to(device)
     y_cor = y_cor.to(device)
     losses = {}
 
-    y_bon_, y_cor_ = net(x)
-    losses['bon'] = F.l1_loss(y_bon_, y_bon)
-    losses['cor'] = F.binary_cross_entropy_with_logits(y_cor_, y_cor)
+    with autocast():
+        y_bon_, y_cor_ = net(x)
+        losses['bon'] = F.l1_loss(y_bon_, y_bon)
+        losses['cor'] = F.binary_cross_entropy_with_logits(y_cor_, y_cor)
+    
     losses['total'] = losses['bon'] + losses['cor']
 
     return losses
@@ -53,6 +80,9 @@ if __name__ == '__main__':
     parser.add_argument('--train_root_dir', default='data/layoutnet_dataset/train',
                         help='root directory to training dataset. '
                              'should contains img, label_cor subdirectories')
+    parser.add_argument('--train_aug_root_dir', default=None,
+                         help='root directory to training dataset. '
+                         'should contains img, label_cor subdirectories')
     parser.add_argument('--valid_root_dir', default='data/layoutnet_dataset/valid',
                         help='root directory to validation dataset. '
                              'should contains img, label_cor subdirectories')
@@ -64,11 +94,11 @@ if __name__ == '__main__':
                         help='disable gamma augmentation')
     parser.add_argument('--no_pano_stretch', action='store_true',
                         help='disable pano stretch')
-    parser.add_argument('--num_workers', default=6, type=int,
+    parser.add_argument('--num_workers', default=8, type=int,
                         help='numbers of workers for dataloaders')
     # optimization related arguments
     parser.add_argument('--freeze_earlier_blocks', default=-1, type=int)
-    parser.add_argument('--batch_size_train', default=4, type=int,
+    parser.add_argument('--batch_size_train', default=8, type=int,
                         help='training mini-batch size')
     parser.add_argument('--batch_size_valid', default=2, type=int,
                         help='validation mini-batch size')
@@ -92,6 +122,10 @@ if __name__ == '__main__':
     # Misc arguments
     parser.add_argument('--no_cuda', action='store_true',
                         help='disable cuda')
+    parser.add_argument('--multi_gpu', action='store_true',
+                        help='enable data parallelism on multiple GPUs')
+    parser.add_argument('--device', default='0',
+                        help='Comma-separated list of GPUs to use (e.g., 0 or 0,1)')
     parser.add_argument('--seed', default=594277, type=int,
                         help='manual seed')
     parser.add_argument('--disp_iter', type=int, default=1,
@@ -99,34 +133,70 @@ if __name__ == '__main__':
     parser.add_argument('--save_every', type=int, default=25,
                         help='epochs frequency to save state_dict')
     args = parser.parse_args()
+
+    if not args.no_cuda:
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     device = torch.device('cpu' if args.no_cuda else 'cuda')
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     os.makedirs(os.path.join(args.ckpt, args.id), exist_ok=True)
 
     # Create dataloader
+    if args.train_aug_root_dir:
+        train_batch_size, train_aug_batch_size = args.batch_size_train//2, args.batch_size_train//2
+        print(args.train_aug_root_dir)
+        dataset_train_aug = PanoCorBonDataset(
+            root_dir=args.train_aug_root_dir,
+            flip=not args.no_flip, rotate=not args.no_rotate, gamma=not args.no_gamma,
+            stretch=not args.no_pano_stretch)
+        loader_train_aug = DataLoader(dataset_train_aug, train_aug_batch_size,
+                            shuffle=True, drop_last=True,
+                            num_workers=args.num_workers,
+                            pin_memory=not args.no_cuda,
+                            worker_init_fn=lambda x: np.random.seed())
+        print(f'train batch size: {train_batch_size}, train augmentation batch size: {train_aug_batch_size}')
+        print(f'training augmentation dataset contains {len(loader_train_aug.dataset)} images!!!')
+    else:
+        train_batch_size = args.batch_size_train
+
+    train_batch_size = args.batch_size_train
+    
     dataset_train = PanoCorBonDataset(
-        root_dir=args.train_root_dir,
-        flip=not args.no_flip, rotate=not args.no_rotate, gamma=not args.no_gamma,
-        stretch=not args.no_pano_stretch)
-    loader_train = DataLoader(dataset_train, args.batch_size_train,
+    root_dir=args.train_root_dir,
+    flip=not args.no_flip, rotate=not args.no_rotate, gamma=not args.no_gamma,
+    stretch=not args.no_pano_stretch)
+    loader_train = DataLoader(dataset_train, train_batch_size,
                               shuffle=True, drop_last=True,
                               num_workers=args.num_workers,
                               pin_memory=not args.no_cuda,
                               worker_init_fn=lambda x: np.random.seed())
+    print(f'training dataset contains {len(loader_train.dataset)} images!!!')
+    
     if args.valid_root_dir:
         dataset_valid = PanoCorBonDataset(
             root_dir=args.valid_root_dir, return_cor=True,
             flip=False, rotate=False, gamma=False,
-            stretch=False)
+            stretch=False, valid= True)
+        print(f'valid dataset contains {len(dataset_valid)} images!!!')
 
     # Create model
     if args.pth is not None:
         print('Finetune model is given.')
         print('Ignore --backbone and --no_rnn')
         net = load_trained_model(HorizonNet, args.pth).to(device)
+        flatten_rnn_parameters(net.module if hasattr(net, 'module') else net)
     else:
         net = HorizonNet(args.backbone, not args.no_rnn).to(device)
+    
+    if args.multi_gpu and torch.cuda.device_count() > 1:
+        print(f"Using {torch.cuda.device_count()} GPUs for Data Parallelism")
+        net = nn.DataParallel(net)
+    elif not args.no_cuda:
+        net = net.to(device)  
+    else:
+        print("Using CPU")
+
+    flatten_rnn_parameters(net.module if hasattr(net, 'module') else net)
 
     assert -1 <= args.freeze_earlier_blocks and args.freeze_earlier_blocks <= 4
     if args.freeze_earlier_blocks != -1:
@@ -155,6 +225,7 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError()
 
+    scaler = GradScaler()
     # Create tensorboard for monitoring training
     tb_path = os.path.join(args.logs, args.id)
     os.makedirs(tb_path, exist_ok=True)
@@ -166,12 +237,18 @@ if __name__ == '__main__':
     args.running_lr = args.warmup_lr if args.warmup_epochs > 0 else args.lr
     args.cur_iter = 0
     args.best_valid_score = 0
+    
+    if args.train_aug_root_dir:
+        aug_loader = AugDataLoader(loader_train_aug)    
+    else:
+        aug_loader = None
 
     # Start training
     for ith_epoch in trange(1, args.epochs + 1, desc='Epoch', unit='ep'):
 
         # Train phase
         net.train()
+        flatten_rnn_parameters(net.module if hasattr(net, 'module') else net)
         if args.freeze_earlier_blocks != -1:
             b0, b1, b2, b3, b4 = net.feature_extractor.list_blocks()
             blocks = [b0, b1, b2, b3, b4]
@@ -186,19 +263,29 @@ if __name__ == '__main__':
 
             args.cur_iter += 1
             x, y_bon, y_cor = next(iterator_train)
+            
+            if aug_loader is not None:
+                x_aug, y_bon_aug, y_cor_aug = aug_loader.get_data()
+                x = torch.cat((x,x_aug),axis=0)
+                y_bon = torch.cat((y_bon,y_bon_aug),axis=0)
+                y_cor = torch.cat((y_cor,y_cor_aug),axis=0)
+                
+            optimizer.zero_grad()
+            with torch.cuda.amp.autocast():
+                losses = feed_forward(net, x, y_bon, y_cor)
+                loss = losses['total']
 
-            losses = feed_forward(net, x, y_bon, y_cor)
+            # backprop
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad()
             for k, v in losses.items():
                 k = 'train/%s' % k
                 tb_writer.add_scalar(k, v.item(), args.cur_iter)
             tb_writer.add_scalar('train/lr', args.running_lr, args.cur_iter)
             loss = losses['total']
 
-            # backprop
-            optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(net.parameters(), 3.0, norm_type='inf')
-            optimizer.step()
 
         # Valid phase
         net.eval()
@@ -241,11 +328,23 @@ if __name__ == '__main__':
             # Save best validation loss model
             now_valid_score = valid_loss['3DIoU'] / len(dataset_valid)
             print('Ep%3d %.4f vs. Best %.4f' % (ith_epoch, now_valid_score, args.best_valid_score))
-            if now_valid_score > args.best_valid_score:
+
+            is_best = now_valid_score > args.best_valid_score
+            if is_best:
                 args.best_valid_score = now_valid_score
-                save_model(net,
-                           os.path.join(args.ckpt, args.id, 'best_valid.pth'),
-                           args)
+
+            # Prepare the dictionary to save
+            save_dict = {'epoch': ith_epoch,
+                         'state_dict': net.module.state_dict() if hasattr(net, 'module') else net.state_dict(),
+                         'optimizer': optimizer.state_dict(),
+                         'best_valid_score': args.best_valid_score
+                         }
+            if hasattr(net, 'module'):
+                save_dict['backbone'] = getattr(net.module, 'backbone', None) 
+            else:
+                save_dict['backbone'] = getattr(net, 'backbone', None)
+
+            save_checkpoint(save_dict, is_best, os.path.join(args.ckpt, args.id), ith_epoch)
 
         # Periodically save model
         if ith_epoch % args.save_every == 0:

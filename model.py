@@ -5,7 +5,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 import functools
+import torchvision
+from distutils.version import LooseVersion
+is_old_version = LooseVersion(torchvision.__version__) < LooseVersion("0.13.0")
+is_new_version = LooseVersion(torchvision.__version__) >= LooseVersion("0.13.0")
 
+if is_new_version:
+    from torchvision.models import ResNet50_Weights, DenseNet121_Weights
+else:
+    pass
 
 ENCODER_RESNET = [
     'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152',
@@ -51,10 +59,13 @@ def wrap_lr_pad(net):
 Encoder
 '''
 class Resnet(nn.Module):
-    def __init__(self, backbone='resnet50', pretrained=True):
+    def __init__(self, backbone='resnet50', pretrained=True, weights=None):
         super(Resnet, self).__init__()
         assert backbone in ENCODER_RESNET
-        self.encoder = getattr(models, backbone)(pretrained=pretrained)
+        if is_old_version:
+            self.encoder = getattr(models, backbone)(pretrained=pretrained)
+        elif is_new_version:
+            self.encoder = getattr(models, backbone)(weights=ResNet50_Weights.IMAGENET1K_V1)
         del self.encoder.fc, self.encoder.avgpool
 
     def forward(self, x):
@@ -81,7 +92,7 @@ class Resnet(nn.Module):
 
 
 class Densenet(nn.Module):
-    def __init__(self, backbone='densenet169', pretrained=True):
+    def __init__(self, backbone='densenet169', pretrained=True, weights=None):
         super(Densenet, self).__init__()
         assert backbone in ENCODER_DENSENET
         self.encoder = getattr(models, backbone)(pretrained=pretrained)
@@ -184,13 +195,19 @@ class HorizonNet(nn.Module):
         self.rnn_hidden_size = 512
 
         # Encoder
-        if backbone.startswith('res'):
-            self.feature_extractor = Resnet(backbone, pretrained=True)
-        elif backbone.startswith('dense'):
-            self.feature_extractor = Densenet(backbone, pretrained=True)
-        else:
-            raise NotImplementedError()
-
+        if is_old_version:
+            if backbone.startswith('res'):
+                self.feature_extractor = Resnet(backbone, pretrained=True)
+            elif backbone.startswith('dense'):
+                self.feature_extractor = Densenet(backbone, pretrained=True)
+            else:
+                raise NotImplementedError()
+        elif is_new_version:
+            if backbone.startswith('res'):
+                self.feature_extractor = Resnet(backbone, weights=ResNet50_Weights.IMAGENET1K_V1)
+            elif backbone.startswith('dense'):
+                self.feature_extractor = Densenet(backbone, weights=DenseNet121_Weights.IMAGENET1K_V1)
+                    
         # Inference channels number from each block of the encoder
         with torch.no_grad():
             dummy = torch.zeros(1, 3, 512, 1024)
