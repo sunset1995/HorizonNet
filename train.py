@@ -176,8 +176,7 @@ if __name__ == '__main__':
         dataset_valid = PanoCorBonDataset(
             root_dir=args.valid_root_dir, return_cor=True,
             flip=False, rotate=False, gamma=False,
-            stretch=False, valid= True)
-        print(f'valid dataset contains {len(dataset_valid)} images!!!')
+            stretch=False)
 
     # Create model
     if args.pth is not None:
