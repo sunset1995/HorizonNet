@@ -66,14 +66,15 @@ Pytorch installation is machine dependent, please install the correct version fo
 
 
 #### Pretrained Models
-- [resnet50_rnn__panos2d3d.pth](https://drive.google.com/open?id=1aieMd61b-3BoOeTRv2pKu9yTk5zEinn0)
+Plase download the pre-trained model [here](https://drive.google.com/drive/folders/1bgJspDogOHGdwXxCB8o3irU3_Gz9rTpK?usp=drive_link)
+- `resnet50_rnn__panos2d3d.pth`
     - Trained on PanoContext/Stanford2d3d 817 pano images.
     - Trained for 300 epoch
-- [resnet50_rnn__st3d.pth](https://drive.google.com/open?id=16v1nhL9C2VZX-qQpikCsS6LiMJn3q6gO)
+- `resnet50_rnn__st3d.pth`
     - Trained on Structured3D 18362 pano images
     - Data setup: original furniture and lighting.
     - Trained for 50 epoch.
-- [resnet50_rnn__zind.pth](https://drive.google.com/open?id=1FrMdk7Z4_sTZOOW65Ek77WbjiDbV98uJ)
+- `resnet50_rnn__zind.pth`
     - Trained on Zillow Indoor 20077 pano images.
     - Data setup: `layout_visible`, `is_primary`, `is_inside`, `is_ceiling_flat`.
     - Trained for 50 epoch.
