@@ -206,7 +206,7 @@ def gen_ww_cuboid(xy, gpid, tol):
     xy_cor = []
     assert len(np.unique(gpid)) == 4
 
-    # For each part seperated by wall-wall peak, voting for a wall
+    # For each part separated by wall-wall peak, voting for a wall
     for j in range(4):
         now_x = xy[gpid == j, 0]
         now_y = xy[gpid == j, 1]
@@ -242,7 +242,7 @@ def gen_ww_general(init_coorx, xy, gpid, tol):
     xy_cor = []
     assert len(init_coorx) == len(np.unique(gpid))
 
-    # Candidate for each part seperated by wall-wall boundary
+    # Candidate for each part separated by wall-wall boundary
     for j in range(len(init_coorx)):
         now_x = xy[gpid == j, 0]
         now_y = xy[gpid == j, 1]
