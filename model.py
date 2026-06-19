@@ -11,7 +11,7 @@ is_old_version = LooseVersion(torchvision.__version__) < LooseVersion("0.13.0")
 is_new_version = LooseVersion(torchvision.__version__) >= LooseVersion("0.13.0")
 
 if is_new_version:
-    from torchvision.models import ResNet50_Weights, DenseNet121_Weights
+    from torchvision.models import ResNet34_Weights, DenseNet121_Weights
 else:
     pass
 
@@ -65,7 +65,7 @@ class Resnet(nn.Module):
         if is_old_version:
             self.encoder = getattr(models, backbone)(pretrained=pretrained)
         elif is_new_version:
-            self.encoder = getattr(models, backbone)(weights=ResNet50_Weights.IMAGENET1K_V1)
+            self.encoder = getattr(models, backbone)(weights=ResNet34_Weights.IMAGENET1K_V1)
         del self.encoder.fc, self.encoder.avgpool
 
     def forward(self, x):
